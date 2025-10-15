@@ -16,7 +16,33 @@ alphacredit/
 ## Backend (.NET Core)
 
 ### Requisitos
-- .NET SDK 8.0 o superior
+- .NET SDK 9.0 o superior
+- PostgreSQL 12 o superior
+
+### Base de Datos
+
+El proyecto usa PostgreSQL con Entity Framework Core. Ver [backend/DATABASE.md](backend/DATABASE.md) para documentación completa.
+
+**Configuración rápida:**
+
+1. Asegúrate de tener PostgreSQL instalado y corriendo
+2. Crea la base de datos:
+   ```bash
+   psql -U postgres
+   CREATE DATABASE alphacredit;
+   \q
+   ```
+3. Actualiza la cadena de conexión en `backend/AlphaCredit.Api/appsettings.json`
+4. La migración ya está aplicada, pero si necesitas recrear la base de datos:
+   ```bash
+   cd backend/AlphaCredit.Api
+   dotnet ef database update
+   ```
+
+**Esquema de base de datos:**
+- 36 tablas para gestión de microfinanzas/préstamos
+- Entidades: Personas, Préstamos, Garantías, Fondos, Catálogos, etc.
+- Ver [backend/DATABASE.md](backend/DATABASE.md) para detalles completos
 
 ### Ejecutar el Backend
 
@@ -86,9 +112,44 @@ El frontend usa variables de entorno definidas en [frontend/alphacredit-app/.env
 3. Abre `http://localhost:3000` en tu navegador
 4. Haz clic en "Check Backend Health" para verificar la conexión
 
-## Próximos Pasos
+## Estado del Proyecto
 
-- Agregar autenticación y autorización
-- Implementar base de datos
-- Agregar más endpoints y funcionalidades
+### Completado ✅
+- ✅ Estructura del proyecto backend (.NET Core 9.0)
+- ✅ Estructura del proyecto frontend (React)
+- ✅ Configuración de CORS
+- ✅ Base de datos PostgreSQL con 36 tablas
+- ✅ Entity Framework Core configurado
+- ✅ Migraciones de base de datos
+- ✅ Modelos de dominio completos
+- ✅ DbContext con todas las entidades
+
+### Próximos Pasos
+
+- Implementar Repositorios y Servicios
+- Crear controladores API para las entidades principales
+- Agregar DTOs (Data Transfer Objects)
+- Implementar validaciones con FluentValidation
+- Agregar autenticación y autorización (JWT)
+- Crear interfaces de usuario en React
+- Implementar logging con Serilog
+- Agregar pruebas unitarias
 - Configurar despliegue en producción
+
+## Tecnologías Utilizadas
+
+### Backend
+- .NET 9.0
+- ASP.NET Core Web API
+- Entity Framework Core 9.0
+- Npgsql (PostgreSQL driver)
+- PostgreSQL 12+
+
+### Frontend
+- React 18
+- JavaScript/ES6+
+- CSS3
+
+## Documentación Adicional
+
+- [Documentación de Base de Datos](backend/DATABASE.md) - Esquema completo, entidades y comandos útiles
