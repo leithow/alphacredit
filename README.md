@@ -57,8 +57,36 @@ El backend se ejecutará en:
 
 ### Endpoints Disponibles
 
-- `GET /api/health` - Verifica el estado del servicio
-- `GET /weatherforecast` - Endpoint de ejemplo
+El API está completamente funcional con endpoints CRUD para todas las entidades principales:
+
+**Entidades Principales:**
+- `/api/personas` - Gestión de personas (clientes, empleados, proveedores)
+- `/api/prestamos` - Gestión de préstamos
+- `/api/garantias` - Gestión de garantías
+- `/api/fondos` - Gestión de fondos
+
+**Catálogos (15 catálogos disponibles):**
+- `/api/catalogs/sexo` - Géneros
+- `/api/catalogs/estadocivil` - Estados civiles
+- `/api/catalogs/tipoidentificacion` - Tipos de identificación
+- `/api/catalogs/moneda` - Monedas
+- `/api/catalogs/frecuenciapago` - Frecuencias de pago
+- `/api/catalogs/formapago` - Formas de pago
+- `/api/catalogs/destinocredito` - Destinos del crédito
+- `/api/catalogs/estadoprestamo` - Estados de préstamo
+- Y más... (ver documentación completa)
+
+**Utilidades:**
+- `/api/health` - Estado del servicio
+
+**Ver documentación completa:** [backend/API_ENDPOINTS.md](backend/API_ENDPOINTS.md)
+
+Todos los endpoints incluyen:
+- Operaciones CRUD completas (GET, POST, PUT, DELETE)
+- Paginación con headers X-Total-Count
+- Filtros y búsqueda avanzada
+- Validaciones de reglas de negocio
+- Manejo de errores con mensajes descriptivos
 
 ## Frontend (React)
 
@@ -121,20 +149,24 @@ El frontend usa variables de entorno definidas en [frontend/alphacredit-app/.env
 - ✅ Base de datos PostgreSQL con 36 tablas
 - ✅ Entity Framework Core configurado
 - ✅ Migraciones de base de datos
-- ✅ Modelos de dominio completos
+- ✅ Modelos de dominio completos (36 entidades)
 - ✅ DbContext con todas las entidades
+- ✅ **Controladores CRUD completos para todas las entidades**
+- ✅ **API REST completamente funcional**
+- ✅ **Validaciones de reglas de negocio**
+- ✅ **Paginación y filtros implementados**
 
 ### Próximos Pasos
 
-- Implementar Repositorios y Servicios
-- Crear controladores API para las entidades principales
-- Agregar DTOs (Data Transfer Objects)
-- Implementar validaciones con FluentValidation
-- Agregar autenticación y autorización (JWT)
-- Crear interfaces de usuario en React
+- Agregar DTOs (Data Transfer Objects) para mejor separación de capas
+- Implementar el patrón Repository (opcional)
+- Agregar validaciones con FluentValidation
+- Implementar autenticación y autorización (JWT)
+- Crear interfaces de usuario en React para CRUD
 - Implementar logging con Serilog
-- Agregar pruebas unitarias
+- Agregar pruebas unitarias e integración
 - Configurar despliegue en producción
+- Agregar Swagger/OpenAPI documentation
 
 ## Tecnologías Utilizadas
 
@@ -152,4 +184,5 @@ El frontend usa variables de entorno definidas en [frontend/alphacredit-app/.env
 
 ## Documentación Adicional
 
-- [Documentación de Base de Datos](backend/DATABASE.md) - Esquema completo, entidades y comandos útiles
+- [Documentación de Base de Datos](backend/DATABASE.md) - Esquema completo, entidades y comandos útiles de EF Core
+- [Documentación de API Endpoints](backend/API_ENDPOINTS.md) - Referencia completa de todos los endpoints REST con ejemplos
