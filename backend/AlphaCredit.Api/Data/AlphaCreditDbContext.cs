@@ -39,6 +39,7 @@ public class AlphaCreditDbContext : DbContext
     public DbSet<PersonaTelefono> PersonaTelefonos { get; set; }
     public DbSet<PersonaActividad> PersonaActividades { get; set; }
     public DbSet<PersonaReferencia> PersonaReferencias { get; set; }
+    public DbSet<PersonaConyuge> PersonasConyuges { get; set; }
 
     // Organizaciones
     public DbSet<Empresa> Empresas { get; set; }
@@ -140,6 +141,7 @@ public class AlphaCreditDbContext : DbContext
         modelBuilder.HasSequence<long>("personaactividadid");
         modelBuilder.HasSequence<long>("personareferenciaid");
         modelBuilder.HasSequence<long>("personatelefonosid");
+        modelBuilder.HasSequence<long>("personaconyugeid");
         modelBuilder.HasSequence<long>("prestamoid");
         modelBuilder.HasSequence<long>("prestamocomponenteid");
         modelBuilder.HasSequence<long>("prestamogarantiaid");

@@ -75,6 +75,7 @@ public class PersonasController : ControllerBase
                 .Include(p => p.Sexo)
                 .Include(p => p.PersonaTelefonos)
                 .Include(p => p.PersonaActividades)
+                .Include(p => p.PersonaConyuge)
                 .FirstOrDefaultAsync(p => p.PersonaId == id);
 
             if (persona == null)
@@ -115,6 +116,14 @@ public class PersonasController : ControllerBase
 
             _context.Personas.Add(persona);
             await _context.SaveChangesAsync();
+
+            // Si hay datos de cónyuge, crearlos
+            if (persona.PersonaConyuge != null && !string.IsNullOrWhiteSpace(persona.PersonaConyuge.ConyugeNombre))
+            {
+                persona.PersonaConyuge.PersonaId = persona.PersonaId;
+                _context.PersonasConyuges.Add(persona.PersonaConyuge);
+                await _context.SaveChangesAsync();
+            }
 
             return CreatedAtAction(nameof(GetPersona), new { id = persona.PersonaId }, persona);
         }
@@ -177,6 +186,30 @@ public class PersonasController : ControllerBase
             existingPersona.PersonaFechaModifica = DateTime.UtcNow;
             existingPersona.PersonaUserModifica = persona.PersonaUserModifica;
 
+            // Manejar PersonaConyuge
+            var existingConyuge = await _context.PersonasConyuges.FirstOrDefaultAsync(c => c.PersonaId == id);
+
+            if (persona.PersonaConyuge != null && !string.IsNullOrWhiteSpace(persona.PersonaConyuge.ConyugeNombre))
+            {
+                if (existingConyuge != null)
+                {
+                    // Actualizar cónyuge existente
+                    existingConyuge.ConyugeNombre = persona.PersonaConyuge.ConyugeNombre;
+                    existingConyuge.ConyugeTelefono = persona.PersonaConyuge.ConyugeTelefono;
+                }
+                else
+                {
+                    // Crear nuevo cónyuge
+                    persona.PersonaConyuge.PersonaId = id;
+                    _context.PersonasConyuges.Add(persona.PersonaConyuge);
+                }
+            }
+            else if (existingConyuge != null)
+            {
+                // Si no se envía cónyuge pero existe uno, eliminarlo
+                _context.PersonasConyuges.Remove(existingConyuge);
+            }
+
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -192,6 +225,66 @@ public class PersonasController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al actualizar la persona {PersonaId}", id);
+            return StatusCode(500, "Error interno del servidor");
+        }
+    }
+
+    // DELETE: api/personas/5 (o inactivar PUT: api/personas/5/inactivar)
+    [HttpPut("{id}/inactivar")]
+    public async Task<IActionResult> InactivarPersona(long id)
+    {
+        try
+        {
+            var persona = await _context.Personas.FindAsync(id);
+            if (persona == null)
+            {
+                return NotFound(new { message = $"Persona con ID {id} no encontrada" });
+            }
+
+            if (!persona.PersonaEstaActiva)
+            {
+                return BadRequest(new { message = "La persona ya está inactiva" });
+            }
+
+            // Verificar si tiene préstamos asociados
+            var prestamosActivos = await _context.Prestamos
+                .Include(p => p.EstadoPrestamo)
+                .Where(p => p.PersonaId == id)
+                .ToListAsync();
+
+            if (prestamosActivos.Any())
+            {
+                // Verificar que todos los préstamos estén cancelados
+                var estadoCancelado = await _context.EstadosPrestamo
+                    .Where(e => e.EstadoPrestamoNombre.ToUpper().Contains("CANCELADO") ||
+                                e.EstadoPrestamoNombre.ToUpper().Contains("CANCEL") ||
+                                e.EstadoPrestamoNombre.ToUpper().Contains("CAN"))
+                    .Select(e => e.EstadoPrestamoId)
+                    .ToListAsync();
+
+                var prestamosNoCancelados = prestamosActivos
+                    .Where(p => !estadoCancelado.Contains(p.EstadoPrestamoId))
+                    .ToList();
+
+                if (prestamosNoCancelados.Any())
+                {
+                    return BadRequest(new {
+                        message = $"No se puede inactivar la persona. Tiene {prestamosNoCancelados.Count} préstamo(s) activo(s). Solo se pueden inactivar personas con todos los préstamos cancelados.",
+                        prestamosActivos = prestamosNoCancelados.Count
+                    });
+                }
+            }
+
+            // Inactivar la persona
+            persona.PersonaEstaActiva = false;
+            persona.PersonaFechaModifica = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Persona inactivada exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al inactivar la persona {PersonaId}", id);
             return StatusCode(500, "Error interno del servidor");
         }
     }
@@ -212,12 +305,7 @@ public class PersonasController : ControllerBase
             var tienePrestamos = await _context.Prestamos.AnyAsync(p => p.PersonaId == id);
             if (tienePrestamos)
             {
-                // Soft delete - desactivar en lugar de eliminar
-                persona.PersonaEstaActiva = false;
-                persona.PersonaFechaModifica = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "La persona ha sido desactivada porque tiene préstamos asociados" });
+                return BadRequest(new { message = "No se puede eliminar una persona con préstamos asociados. Use la opción de inactivar en su lugar." });
             }
 
             _context.Personas.Remove(persona);

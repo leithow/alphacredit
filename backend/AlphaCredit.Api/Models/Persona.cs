@@ -106,4 +106,5 @@ public class Persona
     public virtual ICollection<PersonaActividad> PersonaActividades { get; set; } = new List<PersonaActividad>();
     public virtual ICollection<Prestamo> Prestamos { get; set; } = new List<Prestamo>();
     public virtual ICollection<Garantia> Garantias { get; set; } = new List<Garantia>();
+    public virtual PersonaConyuge? PersonaConyuge { get; set; }
 }

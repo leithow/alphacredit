@@ -3,6 +3,7 @@ using System;
 using AlphaCredit.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AlphaCredit.Api.Migrations
 {
     [DbContext(typeof(AlphaCreditDbContext))]
-    partial class AlphaCreditDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251017154042_AddPersonaConyugeAndEstadoCivilRequiereConyuge")]
+    partial class AddPersonaConyugeAndEstadoCivilRequiereConyuge
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -22,6 +22,9 @@ public class EstadoCivil
     [Column("estadocivilestaactivo")]
     public bool EstadoCivilEstaActivo { get; set; }
 
+    [Column("estadocivilrequiereconyuge")]
+    public bool EstadoCivilRequiereConyuge { get; set; }
+
     // Navigation properties
     public virtual ICollection<Persona> Personas { get; set; } = new List<Persona>();
 }

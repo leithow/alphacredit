@@ -1,16 +1,27 @@
 using Microsoft.EntityFrameworkCore;
 using AlphaCredit.Api.Data;
+using AlphaCredit.Api.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Configurar para manejar referencias circulares
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 builder.Services.AddOpenApi();
 
 // Add DbContext
 builder.Services.AddDbContext<AlphaCreditDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AlphaCreditDb")));
+
+// Add Application Services
+builder.Services.AddScoped<PrestamoAmortizacionService>();
 
 // Add CORS configuration
 builder.Services.AddCors(options =>
