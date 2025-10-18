@@ -28,6 +28,9 @@ public class Prestamo
     [Column("frecuenciapagoid")]
     public long FrecuenciaPagoId { get; set; }
 
+    [Column("fondoid")]
+    public long? FondoId { get; set; }
+
     [Column("prestamonumero")]
     [Required]
     [MaxLength(20)]
@@ -95,6 +98,9 @@ public class Prestamo
 
     [ForeignKey("FrecuenciaPagoId")]
     public virtual FrecuenciaPago FrecuenciaPago { get; set; } = null!;
+
+    [ForeignKey("FondoId")]
+    public virtual Fondo? Fondo { get; set; }
 
     public virtual ICollection<PrestamoComponente> PrestamoComponentes { get; set; } = new List<PrestamoComponente>();
     public virtual ICollection<PrestamoGarantia> PrestamoGarantias { get; set; } = new List<PrestamoGarantia>();
