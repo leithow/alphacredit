@@ -3,8 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import prestamoService from '../../services/prestamoService';
 import catalogService from '../../services/catalogService';
 import fondoService from '../../services/fondoService';
+import garantiaService from '../../services/garantiaService';
 import Button from '../../components/common/Button';
 import ClienteSearchModal from '../../components/common/ClienteSearchModal';
+import PrestamoDocumentosModal from '../../components/common/PrestamoDocumentosModal';
+import { formatCurrency } from '../../utils/currency';
 import './PrestamoForm.css';
 
 const PrestamoForm = () => {
@@ -15,7 +18,11 @@ const PrestamoForm = () => {
   const [loading, setLoading] = useState(false);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [showClienteModal, setShowClienteModal] = useState(false);
+  const [showDocumentosModal, setShowDocumentosModal] = useState(false);
+  const [prestamoData, setPrestamoData] = useState(null);
   const [amortizacionPreview, setAmortizacionPreview] = useState(null);
+  const [garantiasDisponibles, setGarantiasDisponibles] = useState([]);
+  const [garantiasSeleccionadas, setGarantiasSeleccionadas] = useState([]);
   const [catalogs, setCatalogs] = useState({
     estadosPrestamo: [],
     frecuenciasPago: [],
@@ -104,6 +111,7 @@ const PrestamoForm = () => {
     try {
       setLoading(true);
       const prestamo = await prestamoService.getPrestamoById(id);
+      setPrestamoData(prestamo); // Guardar datos completos para el modal
       setFormData({
         ...prestamo,
         prestamoFechaDesembolso: prestamo.prestamoFechaDesembolso
@@ -221,6 +229,12 @@ const PrestamoForm = () => {
       fondoId: parseInt(formData.fondoId),
       prestamoFechaDesembolso: formData.prestamoFechaDesembolso + 'T00:00:00Z',
       prestamoObservaciones: formData.prestamoObservaciones || null,
+      garantias: garantiasSeleccionadas
+        .filter(g => g.montoComprometido > 0)
+        .map(g => ({
+          garantiaId: g.garantiaId,
+          montoComprometido: g.montoComprometido
+        }))
     };
 
     try {
@@ -243,23 +257,85 @@ const PrestamoForm = () => {
     }
   };
 
-  const handleSelectCliente = (cliente) => {
+  const handleSelectCliente = async (cliente) => {
     setClienteSeleccionado(cliente);
     setFormData((prev) => ({
       ...prev,
       personaId: cliente.personaId,
     }));
+
+    // Cargar garantías disponibles del cliente
+    await loadGarantiasDisponibles(cliente.personaId);
+  };
+
+  const loadGarantiasDisponibles = async (personaId) => {
+    try {
+      const garantias = await garantiaService.getGarantiasDisponibles(personaId);
+      setGarantiasDisponibles(garantias);
+    } catch (error) {
+      console.error('Error al cargar garantías disponibles:', error);
+    }
+  };
+
+  const agregarGarantia = (garantia) => {
+    // Verificar que no esté ya agregada
+    if (garantiasSeleccionadas.find(g => g.garantiaId === garantia.garantiaId)) {
+      alert('Esta garantía ya fue agregada');
+      return;
+    }
+
+    // Agregar con monto comprometido inicial
+    setGarantiasSeleccionadas([...garantiasSeleccionadas, {
+      garantiaId: garantia.garantiaId,
+      garantiaDescripcion: garantia.garantiaDescripcion,
+      tipoGarantiaNombre: garantia.tipoGarantiaNombre,
+      valorDisponible: garantia.valorDisponible,
+      montoComprometido: 0
+    }]);
+  };
+
+  const quitarGarantia = (garantiaId) => {
+    setGarantiasSeleccionadas(garantiasSeleccionadas.filter(g => g.garantiaId !== garantiaId));
+  };
+
+  const actualizarMontoGarantia = (garantiaId, monto) => {
+    setGarantiasSeleccionadas(garantiasSeleccionadas.map(g =>
+      g.garantiaId === garantiaId
+        ? { ...g, montoComprometido: parseFloat(monto) || 0 }
+        : g
+    ));
   };
 
   if (loading && isEditMode) {
     return <div className="form-loading">Cargando datos del préstamo...</div>;
   }
 
+  // Modo vista (solo lectura) si es edición
+  const isViewMode = isEditMode;
+
   return (
     <div className="prestamo-form-page">
       <div className="form-header">
-        <h1>{isEditMode ? 'Editar Préstamo' : 'Nuevo Préstamo'}</h1>
-        <p>Complete los datos del préstamo</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div>
+            <h1 style={{ margin: 0 }}>{isViewMode ? '📋 Consultar Préstamo' : 'Nuevo Préstamo'}</h1>
+            <p style={{ margin: '5px 0 0 0' }}>{isViewMode ? 'Información del préstamo (solo lectura)' : 'Complete los datos del préstamo'}</p>
+          </div>
+          {isViewMode && prestamoData && (
+            <Button
+              variant="primary"
+              onClick={() => setShowDocumentosModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              📄 Ver Documentos
+            </Button>
+          )}
+        </div>
+        {isViewMode && (
+          <div style={{ background: '#fff3cd', padding: '10px 15px', borderRadius: '5px', marginTop: '10px' }}>
+            <strong>ℹ️ Modo Solo Lectura:</strong> Los préstamos no pueden editarse por razones de integridad financiera y auditoría.
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="prestamo-form">
@@ -276,7 +352,7 @@ const PrestamoForm = () => {
                   type="button"
                   variant="outline"
                   onClick={() => setShowClienteModal(true)}
-                  disabled={isEditMode}
+                  disabled={isViewMode}
                   style={{ width: '100%', justifyContent: 'center' }}
                 >
                   🔍 Buscar y Seleccionar Cliente
@@ -301,7 +377,7 @@ const PrestamoForm = () => {
                       )}
                     </div>
                   </div>
-                  {!isEditMode && (
+                  {!isViewMode && (
                     <Button
                       type="button"
                       variant="secondary"
@@ -338,6 +414,7 @@ const PrestamoForm = () => {
                 min="0"
                 placeholder="0.00"
                 required
+                disabled={isViewMode}
               />
             </div>
 
@@ -356,6 +433,7 @@ const PrestamoForm = () => {
                 max="100"
                 placeholder="0.00"
                 required
+                disabled={isViewMode}
               />
             </div>
 
@@ -372,6 +450,7 @@ const PrestamoForm = () => {
                 min="1"
                 placeholder="12"
                 required
+                disabled={isViewMode}
               />
             </div>
           </div>
@@ -387,6 +466,7 @@ const PrestamoForm = () => {
                 value={formData.frecuenciaPagoId}
                 onChange={handleChange}
                 required
+                disabled={isViewMode}
               >
                 <option value="">Seleccione...</option>
                 {catalogs.frecuenciasPago.map((freq) => (
@@ -407,6 +487,7 @@ const PrestamoForm = () => {
                 value={formData.monedaId}
                 onChange={handleChange}
                 required
+                disabled={isViewMode}
               >
                 <option value="">Seleccione...</option>
                 {catalogs.monedas.map((moneda) => (
@@ -428,6 +509,7 @@ const PrestamoForm = () => {
                 value={formData.prestamoFechaDesembolso}
                 onChange={handleChange}
                 required
+                disabled={isViewMode}
               />
             </div>
           </div>
@@ -440,6 +522,7 @@ const PrestamoForm = () => {
                 name="destinoCreditoId"
                 value={formData.destinoCreditoId}
                 onChange={handleChange}
+                disabled={isViewMode}
               >
                 <option value="">Seleccione...</option>
                 {catalogs.destinosCredito.map((destino) => (
@@ -460,6 +543,7 @@ const PrestamoForm = () => {
                 value={formData.sucursalId}
                 onChange={handleChange}
                 required
+                disabled={isViewMode}
               >
                 <option value="">Seleccione...</option>
                 {catalogs.sucursales.map((sucursal) => (
@@ -480,6 +564,7 @@ const PrestamoForm = () => {
                 value={formData.fondoId}
                 onChange={handleChange}
                 required
+                disabled={isViewMode}
               >
                 <option value="">Seleccione...</option>
                 {catalogs.fondos
@@ -490,7 +575,7 @@ const PrestamoForm = () => {
                       value={fondo.fondoId}
                       disabled={fondo.fondoSaldoActual < parseFloat(formData.prestamoMonto || 0)}
                     >
-                      {fondo.fondoNombre} - Saldo: ${fondo.fondoSaldoActual.toFixed(2)}
+                      {fondo.fondoNombre} - Saldo: {formatCurrency(fondo.fondoSaldoActual)}
                       {fondo.fondoSaldoActual < parseFloat(formData.prestamoMonto || 0) ? ' (Insuficiente)' : ''}
                     </option>
                   ))}
@@ -501,7 +586,7 @@ const PrestamoForm = () => {
                     const fondoSeleccionado = catalogs.fondos.find(f => f.fondoId === parseInt(formData.fondoId));
                     if (fondoSeleccionado && formData.prestamoMonto) {
                       const saldoRestante = fondoSeleccionado.fondoSaldoActual - parseFloat(formData.prestamoMonto);
-                      return `Saldo después del desembolso: $${saldoRestante.toFixed(2)}`;
+                      return `Saldo después del desembolso: ${formatCurrency(saldoRestante)}`;
                     }
                     return '';
                   })()}
@@ -520,13 +605,136 @@ const PrestamoForm = () => {
                 onChange={handleChange}
                 rows="3"
                 placeholder="Observaciones adicionales sobre el préstamo..."
+                disabled={isViewMode}
               />
             </div>
           </div>
         </div>
 
+        {/* GARANTÍAS */}
+        {!isViewMode && clienteSeleccionado && (
+          <div className="form-section garantias-section">
+            <h3>Garantías (Opcional)</h3>
+            <p className="section-description">
+              Agregue garantías para respaldar este préstamo. Las garantías prendarias e hipotecarias tienen un valor disponible limitado.
+            </p>
+
+            {/* Garantías Disponibles */}
+            {garantiasDisponibles.length > 0 && (
+              <div className="garantias-disponibles">
+                <h4>Garantías Disponibles del Cliente</h4>
+                <div className="garantias-grid">
+                  {garantiasDisponibles
+                    .filter(g => !garantiasSeleccionadas.find(gs => gs.garantiaId === g.garantiaId))
+                    .map((garantia) => (
+                      <div key={garantia.garantiaId} className="garantia-card disponible">
+                        <div className="garantia-header">
+                          <span className={`tipo-badge tipo-${garantia.tipoGarantiaNombre?.toLowerCase()}`}>
+                            {garantia.tipoGarantiaNombre}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="small"
+                            onClick={() => agregarGarantia(garantia)}
+                          >
+                            + Agregar
+                          </Button>
+                        </div>
+                        <div className="garantia-body">
+                          <p className="garantia-descripcion">{garantia.garantiaDescripcion}</p>
+                          <div className="garantia-valores">
+                            <div className="valor-item">
+                              <span className="label">Valor Realizable:</span>
+                              <span className="value">{formatCurrency(garantia.garantiaValorRealizable || 0)}</span>
+                            </div>
+                            {!garantia.tipoGarantiaNombre?.toUpperCase().includes('FIDUCIARIA') && (
+                              <>
+                                <div className="valor-item">
+                                  <span className="label">Comprometido:</span>
+                                  <span className="value comprometido">{formatCurrency(garantia.montoComprometido || 0)}</span>
+                                </div>
+                                <div className="valor-item">
+                                  <span className="label">Disponible:</span>
+                                  <span className="value disponible">{formatCurrency(garantia.valorDisponible || 0)}</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Garantías Seleccionadas */}
+            {garantiasSeleccionadas.length > 0 && (
+              <div className="garantias-seleccionadas">
+                <h4>Garantías Agregadas</h4>
+                <div className="garantias-list">
+                  {garantiasSeleccionadas.map((garantia) => (
+                    <div key={garantia.garantiaId} className="garantia-card seleccionada">
+                      <div className="garantia-header">
+                        <span className={`tipo-badge tipo-${garantia.tipoGarantiaNombre?.toLowerCase()}`}>
+                          {garantia.tipoGarantiaNombre}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="danger"
+                          size="small"
+                          onClick={() => quitarGarantia(garantia.garantiaId)}
+                        >
+                          Quitar
+                        </Button>
+                      </div>
+                      <div className="garantia-body">
+                        <p className="garantia-descripcion">{garantia.garantiaDescripcion}</p>
+                        <div className="monto-comprometido-input">
+                          <label htmlFor={`monto-${garantia.garantiaId}`}>
+                            Monto a Comprometer: <span className="required">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            id={`monto-${garantia.garantiaId}`}
+                            value={garantia.montoComprometido || ''}
+                            onChange={(e) => actualizarMontoGarantia(garantia.garantiaId, e.target.value)}
+                            step="0.01"
+                            min="0"
+                            max={garantia.valorDisponible || undefined}
+                            placeholder="0.00"
+                            required
+                          />
+                          {!garantia.tipoGarantiaNombre?.toUpperCase().includes('FIDUCIARIA') && (
+                            <small>Disponible: {formatCurrency(garantia.valorDisponible || 0)}</small>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="garantias-summary">
+                  <strong>Total Comprometido:</strong>
+                  <span className="total-comprometido">
+                    {formatCurrency(garantiasSeleccionadas.reduce((sum, g) => sum + (g.montoComprometido || 0), 0))}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {garantiasDisponibles.length === 0 && (
+              <div className="no-garantias">
+                <p>Este cliente no tiene garantías disponibles.</p>
+                <p>
+                  <small>Puede crear el préstamo sin garantías o agregar garantías desde el módulo de Garantías.</small>
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* CALCULADORA DE AMORTIZACIÓN */}
-        {!isEditMode && (
+        {!isViewMode && (
           <div className="form-section amortizacion-section">
             <div className="section-header">
               <h3>Vista Previa de Amortización</h3>
@@ -545,28 +753,19 @@ const PrestamoForm = () => {
                   <div className="summary-item">
                     <span className="label">Monto Total a Pagar:</span>
                     <span className="value">
-                      L
-                      {amortizacionPreview
-                        .reduce((sum, cuota) => sum + cuota.cuota, 0)
-                        .toFixed(2)}
+                      {formatCurrency(amortizacionPreview.reduce((sum, cuota) => sum + cuota.cuota, 0))}
                     </span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Total Capital:</span>
                     <span className="value">
-                      L
-                      {amortizacionPreview
-                        .reduce((sum, cuota) => sum + cuota.capital, 0)
-                        .toFixed(2)}
+                      {formatCurrency(amortizacionPreview.reduce((sum, cuota) => sum + cuota.capital, 0))}
                     </span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Total Intereses:</span>
                     <span className="value">
-                      L
-                      {amortizacionPreview
-                        .reduce((sum, cuota) => sum + cuota.interes, 0)
-                        .toFixed(2)}
+                      {formatCurrency(amortizacionPreview.reduce((sum, cuota) => sum + cuota.interes, 0))}
                     </span>
                   </div>
                 </div>
@@ -588,10 +787,10 @@ const PrestamoForm = () => {
                         <tr key={index}>
                           <td>{cuota.numeroCuota}</td>
                           <td>{new Date(cuota.fechaPago).toLocaleDateString()}</td>
-                          <td className="amount">L{cuota.capital.toFixed(2)}</td>
-                          <td className="amount">L{cuota.interes.toFixed(2)}</td>
-                          <td className="amount"><strong>L{cuota.cuota.toFixed(2)}</strong></td>
-                          <td className="amount">L{cuota.saldoCapital.toFixed(2)}</td>
+                          <td className="amount">{formatCurrency(cuota.capital)}</td>
+                          <td className="amount">{formatCurrency(cuota.interes)}</td>
+                          <td className="amount"><strong>{formatCurrency(cuota.cuota)}</strong></td>
+                          <td className="amount">{formatCurrency(cuota.saldoCapital)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -605,11 +804,13 @@ const PrestamoForm = () => {
         {/* ACCIONES */}
         <div className="form-actions">
           <Button type="button" variant="secondary" onClick={() => navigate('/prestamos')}>
-            Cancelar
+            {isViewMode ? '← Volver' : 'Cancelar'}
           </Button>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? 'Guardando...' : isEditMode ? 'Actualizar' : 'Crear Préstamo'}
-          </Button>
+          {!isViewMode && (
+            <Button type="submit" variant="primary" disabled={loading}>
+              {loading ? 'Guardando...' : 'Crear Préstamo'}
+            </Button>
+          )}
         </div>
       </form>
 
@@ -619,6 +820,15 @@ const PrestamoForm = () => {
         onClose={() => setShowClienteModal(false)}
         onSelectCliente={handleSelectCliente}
       />
+
+      {/* MODAL DE DOCUMENTOS DEL PRÉSTAMO */}
+      {isViewMode && prestamoData && (
+        <PrestamoDocumentosModal
+          isOpen={showDocumentosModal}
+          onClose={() => setShowDocumentosModal(false)}
+          prestamo={prestamoData}
+        />
+      )}
     </div>
   );
 };

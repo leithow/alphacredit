@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axiosInstance from '../../api/axiosConfig';
+import { formatCurrency } from '../../utils/currency';
 import Modal from './Modal';
 import Button from './Button';
 import './MovimientoFondoModal.css';
@@ -92,7 +93,7 @@ const MovimientoFondoModal = ({ isOpen, onClose, fondo, onMovimientoCreado }) =>
             <div className="detail-item">
               <span className="label">Saldo Actual:</span>
               <span className="value saldo-actual">
-                ${fondo.fondoSaldoActual.toFixed(2)}
+                {formatCurrency(fondo.fondoSaldoActual)}
               </span>
             </div>
           </div>
@@ -167,20 +168,20 @@ const MovimientoFondoModal = ({ isOpen, onClose, fondo, onMovimientoCreado }) =>
             <div className="saldo-preview">
               <div className="preview-item">
                 <span className="label">Saldo Actual:</span>
-                <span className="value">${fondo.fondoSaldoActual.toFixed(2)}</span>
+                <span className="value">{formatCurrency(fondo.fondoSaldoActual)}</span>
               </div>
               <div className="preview-item">
                 <span className="label">
                   {formData.fondoMovimientoTipo === 'INGRESO' ? '+' : '-'} Movimiento:
                 </span>
                 <span className={`value ${formData.fondoMovimientoTipo.toLowerCase()}`}>
-                  ${parseFloat(formData.fondoMovimientoMonto).toFixed(2)}
+                  {formatCurrency(parseFloat(formData.fondoMovimientoMonto))}
                 </span>
               </div>
               <div className="preview-item total">
                 <span className="label">Nuevo Saldo:</span>
                 <span className={`value ${nuevoSaldo < 0 ? 'negativo' : 'positivo'}`}>
-                  ${nuevoSaldo.toFixed(2)}
+                  {formatCurrency(nuevoSaldo)}
                 </span>
               </div>
             </div>

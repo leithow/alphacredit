@@ -22,6 +22,9 @@ public class PrestamoGarantia
     [Column("prestamogarantiaestaactiva")]
     public bool PrestamoGarantiaEstaActiva { get; set; }
 
+    [Column("prestamogarantiamontocomprometido", TypeName = "decimal(18,2)")]
+    public decimal PrestamoGarantiaMontoComprometido { get; set; }
+
     // Navigation properties
     [ForeignKey("PrestamoId")]
     public virtual Prestamo Prestamo { get; set; } = null!;

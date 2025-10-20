@@ -56,4 +56,9 @@ public class PrestamoCreateRequest
 
     [MaxLength(40)]
     public string? PrestamoUserCrea { get; set; }
+
+    /// <summary>
+    /// Lista opcional de garantías a asociar con el préstamo
+    /// </summary>
+    public List<PrestamoGarantiaDto>? Garantias { get; set; }
 }

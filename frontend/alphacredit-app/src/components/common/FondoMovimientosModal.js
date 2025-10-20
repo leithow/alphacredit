@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../api/axiosConfig';
+import { formatCurrency } from '../../utils/currency';
 import '../../styles/Modal.css';
 
 const FondoMovimientosModal = ({ fondo, onClose }) => {
@@ -35,14 +36,6 @@ const FondoMovimientosModal = ({ fondo, onClose }) => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-NI', {
-      style: 'currency',
-      currency: 'NIO',
-      minimumFractionDigits: 2
-    }).format(amount);
   };
 
   const getTipoMovimientoClass = (tipo) => {

@@ -4,6 +4,8 @@ import personaService from '../../services/personaService';
 import catalogService from '../../services/catalogService';
 import Button from '../../components/common/Button';
 import MapModal from '../../components/common/MapModal';
+import DniModal from '../../components/common/DniModal';
+import DniUploader from '../../components/common/DniUploader';
 import './PersonaForm.css';
 
 const PersonaForm = () => {
@@ -14,6 +16,7 @@ const PersonaForm = () => {
   const [loading, setLoading] = useState(false);
   const [edad, setEdad] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [showDniModal, setShowDniModal] = useState(false);
   const [catalogs, setCatalogs] = useState({
     tiposIdentificacion: [],
     sexos: [],
@@ -309,6 +312,17 @@ const PersonaForm = () => {
             <div className="form-group">
               <label htmlFor="personaIdentificacion">
                 Número de Identificación <span className="required">*</span>
+                {isEditMode && (
+                  <Button
+                    type="button"
+                    variant="info"
+                    size="small"
+                    onClick={() => setShowDniModal(true)}
+                    style={{ marginLeft: '10px' }}
+                  >
+                    📸 Ver DNI
+                  </Button>
+                )}
               </label>
               <input
                 type="text"
@@ -537,6 +551,13 @@ const PersonaForm = () => {
           </div>
         </div>
 
+        {/* DOCUMENTOS DNI - Modo creación */}
+        {!isEditMode && (
+          <div className="form-section">
+            <DniUploader personaId={null} />
+          </div>
+        )}
+
         {/* TIPO DE PERSONA */}
         <div className="form-section">
           <h3>Tipo de Persona</h3>
@@ -608,6 +629,14 @@ const PersonaForm = () => {
         onClose={() => setShowMapModal(false)}
         onSelectLocation={handleSelectLocation}
         initialLocation={formData.personaGeolocalizacion}
+      />
+
+      {/* MODAL DE DNI */}
+      <DniModal
+        isOpen={showDniModal}
+        onClose={() => setShowDniModal(false)}
+        personaId={id}
+        personaNombre={formData.personaNombreCompleto}
       />
     </div>
   );

@@ -321,3 +321,245 @@
     width: 100%;
   }
 }
+
+/* Sección de Garantías */
+.garantias-section {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.garantias-section .section-description {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0 0 20px 0;
+}
+
+.garantias-section h4 {
+  font-size: 1rem;
+  color: #495057;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+/* Garantías Disponibles */
+.garantias-disponibles {
+  margin-bottom: 30px;
+}
+
+.garantias-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Garantías Seleccionadas */
+.garantias-seleccionadas {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.garantias-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Tarjetas de Garantía */
+.garantia-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.garantia-card.disponible {
+  border-color: #d1d5db;
+}
+
+.garantia-card.disponible:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.garantia-card.seleccionada {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.garantia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tipo-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tipo-badge.tipo-prendaria {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.tipo-badge.tipo-hipotecaria {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.tipo-badge.tipo-fiduciaria {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.garantia-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.garantia-descripcion {
+  font-size: 14px;
+  color: #374151;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.garantia-valores {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.valor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.valor-item .label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.valor-item .value {
+  color: #2c3e50;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.valor-item .value.comprometido {
+  color: #dc2626;
+}
+
+.valor-item .value.disponible {
+  color: #059669;
+}
+
+/* Monto Comprometido Input */
+.monto-comprometido-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.monto-comprometido-input label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.monto-comprometido-input input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.monto-comprometido-input input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.monto-comprometido-input small {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 500;
+}
+
+/* Resumen de Garantías */
+.garantias-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #eff6ff;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.garantias-summary strong {
+  color: #1e40af;
+}
+
+.total-comprometido {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e40af;
+  font-family: 'Courier New', monospace;
+}
+
+/* Sin Garantías */
+.no-garantias {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.no-garantias p:first-child {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.no-garantias p:last-child {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Media queries para garantías */
+@media screen and (max-width: 768px) {
+  .garantias-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .garantia-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .garantia-header button {
+    width: 100%;
+  }
+
+  .garantias-summary {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AlphaCredit.Api.Data;
 using AlphaCredit.Api.Models;
+using AlphaCredit.Api.DTOs;
 
 namespace AlphaCredit.Api.Controllers;
 
@@ -220,6 +221,52 @@ public class GarantiasController : ControllerBase
         }
     }
 
+    // GET: api/garantias/prestamo/5
+    [HttpGet("prestamo/{prestamoId}")]
+    public async Task<ActionResult> GetGarantiasByPrestamo(
+        long prestamoId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        try
+        {
+            var query = _context.PrestamosGarantias
+                .Where(pg => pg.PrestamoId == prestamoId)
+                .Include(pg => pg.Garantia)
+                    .ThenInclude(g => g.TipoGarantia)
+                .Include(pg => pg.Garantia)
+                    .ThenInclude(g => g.EstadoGarantia)
+                .Select(pg => pg.Garantia);
+
+            var totalRecords = await query.CountAsync();
+
+            var garantias = await query
+                .OrderByDescending(g => g.GarantiaFechaCreacion)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
+
+            var response = new
+            {
+                data = garantias,
+                totalCount = totalRecords,
+                pageNumber,
+                pageSize
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener las garantías del préstamo {PrestamoId}", prestamoId);
+            return StatusCode(500, "Error interno del servidor");
+        }
+    }
+
     // GET: api/garantias/persona/5
     [HttpGet("persona/{personaId}")]
     public async Task<ActionResult<IEnumerable<Garantia>>> GetGarantiasByPersona(long personaId)
@@ -244,35 +291,54 @@ public class GarantiasController : ControllerBase
 
     // GET: api/garantias/disponibles
     [HttpGet("disponibles")]
-    public async Task<ActionResult<IEnumerable<Garantia>>> GetGarantiasDisponibles([FromQuery] long? personaId = null)
+    public async Task<ActionResult<IEnumerable<GarantiaDisponibleDto>>> GetGarantiasDisponibles([FromQuery] long? personaId = null)
     {
         try
         {
-            var estadoDisponible = await _context.EstadosGarantia
-                .Where(e => e.EstadoGarantiaEstaActiva && (e.EstadoGarantiaNombre.Contains("Disponible") || e.EstadoGarantiaNombre.Contains("Libre")))
-                .Select(e => e.EstadoGarantiaId)
-                .FirstOrDefaultAsync();
-
             var query = _context.Garantias
                 .Include(g => g.Persona)
                 .Include(g => g.TipoGarantia)
+                .Include(g => g.PrestamoGarantias)
                 .AsQueryable();
-
-            if (estadoDisponible > 0)
-            {
-                query = query.Where(g => g.EstadoGarantiaId == estadoDisponible);
-            }
 
             if (personaId.HasValue)
             {
                 query = query.Where(g => g.PersonaId == personaId.Value);
             }
 
-            var garantias = await query
-                .OrderByDescending(g => g.GarantiaValorRealizable)
-                .ToListAsync();
+            var garantias = await query.ToListAsync();
 
-            return Ok(garantias);
+            // Calcular el valor disponible de cada garantía
+            var garantiasDisponibles = garantias.Select(g =>
+            {
+                // Sumar todos los montos comprometidos en préstamos activos
+                var montoComprometido = g.PrestamoGarantias
+                    .Where(pg => pg.PrestamoGarantiaEstaActiva)
+                    .Sum(pg => pg.PrestamoGarantiaMontoComprometido);
+
+                var valorRealizable = g.GarantiaValorRealizable ?? 0;
+                var valorDisponible = valorRealizable - montoComprometido;
+
+                return new GarantiaDisponibleDto
+                {
+                    GarantiaId = g.GarantiaId,
+                    PersonaId = g.PersonaId,
+                    PersonaNombreCompleto = g.Persona?.PersonaNombreCompleto ?? "",
+                    TipoGarantiaId = g.TipoGarantiaId,
+                    TipoGarantiaNombre = g.TipoGarantia?.TipoGarantiaNombre ?? "",
+                    GarantiaDescripcion = g.GarantiaDescripcion,
+                    GarantiaValorComercial = g.GarantiaValorComercial,
+                    GarantiaValorRealizable = g.GarantiaValorRealizable,
+                    MontoComprometido = montoComprometido,
+                    ValorDisponible = valorDisponible,
+                    GarantiaObservaciones = g.GarantiaObservaciones
+                };
+            })
+            .Where(g => g.ValorDisponible > 0 || g.TipoGarantiaNombre.ToUpper().Contains("FIDUCIARIA")) // Mostrar solo garantías con valor disponible, o fiduciarias (que no tienen límite)
+            .OrderByDescending(g => g.ValorDisponible)
+            .ToList();
+
+            return Ok(garantiasDisponibles);
         }
         catch (Exception ex)
         {

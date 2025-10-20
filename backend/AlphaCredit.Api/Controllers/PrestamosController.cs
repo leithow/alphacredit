@@ -14,12 +14,14 @@ public class PrestamosController : ControllerBase
     private readonly AlphaCreditDbContext _context;
     private readonly ILogger<PrestamosController> _logger;
     private readonly PrestamoAmortizacionService _amortizacionService;
+    private readonly PrestamoDocumentoService _documentoService;
 
     public PrestamosController(AlphaCreditDbContext context, ILogger<PrestamosController> logger)
     {
         _context = context;
         _logger = logger;
         _amortizacionService = new PrestamoAmortizacionService();
+        _documentoService = new PrestamoDocumentoService(context);
     }
 
     // GET: api/prestamos
@@ -297,7 +299,92 @@ public class PrestamosController : ControllerBase
             fondo.FondoFechaModifica = DateTime.UtcNow;
             fondo.FondoUserModifica = request.PrestamoUserCrea ?? "system";
 
+            // Procesar garantías si se proporcionaron
+            if (request.Garantias != null && request.Garantias.Any())
+            {
+                foreach (var garantiaDto in request.Garantias)
+                {
+                    // Validar que la garantía existe
+                    var garantia = await _context.Garantias
+                        .Include(g => g.TipoGarantia)
+                        .Include(g => g.PrestamoGarantias)
+                        .FirstOrDefaultAsync(g => g.GarantiaId == garantiaDto.GarantiaId);
+
+                    if (garantia == null)
+                    {
+                        return BadRequest(new { message = $"La garantía con ID {garantiaDto.GarantiaId} no existe" });
+                    }
+
+                    // Calcular monto comprometido actual
+                    var montoComprometidoActual = garantia.PrestamoGarantias
+                        .Where(pg => pg.PrestamoGarantiaEstaActiva)
+                        .Sum(pg => pg.PrestamoGarantiaMontoComprometido);
+
+                    var valorRealizable = garantia.GarantiaValorRealizable ?? 0;
+                    var valorDisponible = valorRealizable - montoComprometidoActual;
+
+                    // Validar que hay valor disponible (excepto para fiduciarias)
+                    if (!garantia.TipoGarantia.TipoGarantiaNombre.ToUpper().Contains("FIDUCIARIA"))
+                    {
+                        if (garantiaDto.MontoComprometido > valorDisponible)
+                        {
+                            return BadRequest(new
+                            {
+                                message = $"La garantía '{garantia.GarantiaDescripcion}' no tiene valor disponible suficiente. " +
+                                         $"Valor disponible: {valorDisponible:C}, Monto solicitado: {garantiaDto.MontoComprometido:C}",
+                                garantiaId = garantia.GarantiaId,
+                                valorDisponible,
+                                montoSolicitado = garantiaDto.MontoComprometido
+                            });
+                        }
+                    }
+
+                    // Crear la relación préstamo-garantía
+                    var prestamoGarantia = new PrestamoGarantia
+                    {
+                        PrestamoId = prestamo.PrestamoId,
+                        GarantiaId = garantiaDto.GarantiaId,
+                        PrestamoGarantiaMontoComprometido = garantiaDto.MontoComprometido,
+                        PrestamoGarantiaFechaAsignacion = DateTime.UtcNow,
+                        PrestamoGarantiaEstaActiva = true
+                    };
+
+                    _context.PrestamosGarantias.Add(prestamoGarantia);
+                }
+            }
+
             await _context.SaveChangesAsync();
+
+            // Generar automáticamente contrato y pagaré
+            try
+            {
+                _logger.LogInformation("Generando documentos para préstamo {PrestamoId}", prestamo.PrestamoId);
+
+                // Generar contrato
+                await _documentoService.GenerarContratoPrestamo(prestamo.PrestamoId);
+                await _documentoService.RegistrarImpresion(
+                    prestamo.PrestamoId,
+                    "CONTRATO",
+                    request.PrestamoUserCrea ?? "system",
+                    HttpContext.Connection.RemoteIpAddress?.ToString()
+                );
+
+                // Generar pagaré
+                await _documentoService.GenerarPagare(prestamo.PrestamoId);
+                await _documentoService.RegistrarImpresion(
+                    prestamo.PrestamoId,
+                    "PAGARE",
+                    request.PrestamoUserCrea ?? "system",
+                    HttpContext.Connection.RemoteIpAddress?.ToString()
+                );
+
+                _logger.LogInformation("Documentos generados exitosamente para préstamo {PrestamoId}", prestamo.PrestamoId);
+            }
+            catch (Exception docEx)
+            {
+                _logger.LogWarning(docEx, "Error al generar documentos automáticos para préstamo {PrestamoId}. El préstamo se creó correctamente.", prestamo.PrestamoId);
+                // No fallar la creación del préstamo si falla la generación de documentos
+            }
 
             // Cargar el préstamo con sus relaciones
             var prestamoCreado = await _context.Prestamos
@@ -306,6 +393,9 @@ public class PrestamosController : ControllerBase
                 .Include(p => p.FrecuenciaPago)
                 .Include(p => p.PrestamoComponentes)
                     .ThenInclude(pc => pc.ComponentePrestamo)
+                .Include(p => p.PrestamoGarantias)
+                    .ThenInclude(pg => pg.Garantia)
+                        .ThenInclude(g => g.TipoGarantia)
                 .FirstOrDefaultAsync(p => p.PrestamoId == prestamo.PrestamoId);
 
             return CreatedAtAction(nameof(GetPrestamo), new { id = prestamo.PrestamoId }, prestamoCreado);
@@ -318,49 +408,15 @@ public class PrestamosController : ControllerBase
     }
 
     // PUT: api/prestamos/5
+    // DESHABILITADO: Los préstamos no pueden editarse una vez creados
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdatePrestamo(long id, Prestamo prestamo)
+    public IActionResult UpdatePrestamo(long id, Prestamo prestamo)
     {
-        if (id != prestamo.PrestamoId)
+        return BadRequest(new
         {
-            return BadRequest(new { message = "El ID del préstamo no coincide" });
-        }
-
-        try
-        {
-            var existingPrestamo = await _context.Prestamos.FindAsync(id);
-            if (existingPrestamo == null)
-            {
-                return NotFound(new { message = $"Préstamo con ID {id} no encontrado" });
-            }
-
-            // Actualizar solo campos permitidos
-            existingPrestamo.EstadoPrestamoId = prestamo.EstadoPrestamoId;
-            existingPrestamo.PrestamoTasaInteres = prestamo.PrestamoTasaInteres;
-            existingPrestamo.PrestamoPlazo = prestamo.PrestamoPlazo;
-            existingPrestamo.FrecuenciaPagoId = prestamo.FrecuenciaPagoId;
-            existingPrestamo.DestinoCreditoId = prestamo.DestinoCreditoId;
-            existingPrestamo.PrestamoObservaciones = prestamo.PrestamoObservaciones;
-            existingPrestamo.PrestamoFechaModifica = DateTime.UtcNow;
-            existingPrestamo.PrestamoUserModifica = prestamo.PrestamoUserModifica;
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!await PrestamoExists(id))
-            {
-                return NotFound();
-            }
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al actualizar el préstamo {PrestamoId}", id);
-            return StatusCode(500, "Error interno del servidor");
-        }
+            message = "Los préstamos no pueden ser modificados una vez creados por razones de integridad financiera y auditoría.",
+            code = "PRESTAMO_NO_EDITABLE"
+        });
     }
 
     // DELETE: api/prestamos/5
@@ -519,6 +575,133 @@ public class PrestamosController : ControllerBase
         {
             _logger.LogError(ex, "Error al calcular la amortización");
             return StatusCode(500, new { message = "Error interno del servidor", error = ex.Message });
+        }
+    }
+
+    // GET: api/prestamos/5/documentos/contrato
+    [HttpGet("{id}/documentos/contrato")]
+    public async Task<IActionResult> GenerarContrato(long id, [FromQuery] string? usuario = "system")
+    {
+        try
+        {
+            var html = await _documentoService.GenerarContratoPrestamo(id);
+
+            // Registrar impresión
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _documentoService.RegistrarImpresion(id, "CONTRATO", usuario ?? "system", clientIp);
+
+            return Content(html, "text/html");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar contrato del préstamo {PrestamoId}", id);
+            return StatusCode(500, new { message = "Error al generar el contrato", error = ex.Message });
+        }
+    }
+
+    // GET: api/prestamos/5/documentos/pagare
+    [HttpGet("{id}/documentos/pagare")]
+    public async Task<IActionResult> GenerarPagare(long id, [FromQuery] string? usuario = "system")
+    {
+        try
+        {
+            var html = await _documentoService.GenerarPagare(id);
+
+            // Registrar impresión
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _documentoService.RegistrarImpresion(id, "PAGARE", usuario ?? "system", clientIp);
+
+            return Content(html, "text/html");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar pagaré del préstamo {PrestamoId}", id);
+            return StatusCode(500, new { message = "Error al generar el pagaré", error = ex.Message });
+        }
+    }
+
+    // GET: api/prestamos/5/documentos/plan-pagos
+    [HttpGet("{id}/documentos/plan-pagos")]
+    public async Task<IActionResult> GenerarPlanPagos(long id, [FromQuery] string? usuario = "system")
+    {
+        try
+        {
+            var html = await _documentoService.GenerarPlanPagos(id);
+
+            // Registrar impresión
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            await _documentoService.RegistrarImpresion(id, "PLAN_PAGOS", usuario ?? "system", clientIp);
+
+            return Content(html, "text/html");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar plan de pagos del préstamo {PrestamoId}", id);
+            return StatusCode(500, new { message = "Error al generar el plan de pagos", error = ex.Message });
+        }
+    }
+
+    // GET: api/prestamos/5/documentos/historial
+    [HttpGet("{id}/documentos/historial")]
+    public async Task<IActionResult> ObtenerHistorialImpresiones(long id, [FromQuery] string tipoDocumento)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(tipoDocumento))
+            {
+                return BadRequest(new { message = "Debe especificar el tipo de documento" });
+            }
+
+            var historial = await _documentoService.ObtenerHistorialImpresiones(id, tipoDocumento);
+
+            return Ok(new
+            {
+                prestamoId = id,
+                tipoDocumento,
+                totalImpresiones = historial.Count,
+                impresiones = historial.Select(i => new
+                {
+                    fecha = i.PrestamoDocumentoImpresionFecha,
+                    usuario = i.PrestamoDocumentoImpresionUsuario,
+                    ip = i.PrestamoDocumentoImpresionIp,
+                    observaciones = i.PrestamoDocumentoImpresionObservaciones
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener historial de impresiones del préstamo {PrestamoId}", id);
+            return StatusCode(500, new { message = "Error al obtener el historial", error = ex.Message });
+        }
+    }
+
+    // GET: api/prestamos/5/documentos/estadisticas
+    [HttpGet("{id}/documentos/estadisticas")]
+    public async Task<IActionResult> ObtenerEstadisticasDocumentos(long id)
+    {
+        try
+        {
+            var documentos = await _context.PrestamosDocumentos
+                .Where(pd => pd.PrestamoId == id)
+                .Select(pd => new
+                {
+                    tipo = pd.PrestamoDocumentoTipo,
+                    vecesImpreso = pd.PrestamoDocumentoVecesImpreso,
+                    primeraImpresion = pd.PrestamoDocumentoFechaPrimeraImpresion,
+                    ultimaImpresion = pd.PrestamoDocumentoFechaUltimaImpresion
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                prestamoId = id,
+                documentos
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener estadísticas de documentos del préstamo {PrestamoId}", id);
+            return StatusCode(500, new { message = "Error al obtener las estadísticas", error = ex.Message });
         }
     }
 

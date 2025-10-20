@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using AlphaCredit.Api.Data;
+using AlphaCredit.Api.Models;
 using AlphaCredit.Api.Services;
 using System.Text.Json.Serialization;
 
@@ -20,8 +21,13 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<AlphaCreditDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AlphaCreditDb")));
 
+// Add Configuration Options
+builder.Services.Configure<FileStorageSettings>(
+    builder.Configuration.GetSection("FileStorage"));
+
 // Add Application Services
 builder.Services.AddScoped<PrestamoAmortizacionService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // Add CORS configuration
 builder.Services.AddCors(options =>

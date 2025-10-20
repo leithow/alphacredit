@@ -5,6 +5,7 @@ import Table from '../../components/common/Table';
 import Button from '../../components/common/Button';
 import MovimientoFondoModal from '../../components/common/MovimientoFondoModal';
 import FondoMovimientosModal from '../../components/common/FondoMovimientosModal';
+import { formatCurrency } from '../../utils/currency';
 import './FondosList.css';
 
 const FondosList = () => {
@@ -89,14 +90,14 @@ const FondosList = () => {
     },
     {
       header: 'Saldo Inicial',
-      render: (row) => `$${row.fondoSaldoInicial.toFixed(2)}`,
+      render: (row) => formatCurrency(row.fondoSaldoInicial),
       width: '150px',
     },
     {
       header: 'Saldo Actual',
       render: (row) => (
         <span className={`saldo ${row.fondoSaldoActual < 0 ? 'negativo' : 'positivo'}`}>
-          ${row.fondoSaldoActual.toFixed(2)}
+          {formatCurrency(row.fondoSaldoActual)}
         </span>
       ),
       width: '150px',
@@ -196,7 +197,7 @@ const FondosList = () => {
         <div className="stat-card">
           <div className="stat-label">Saldo Total</div>
           <div className="stat-value">
-            ${fondos.reduce((sum, f) => sum + f.fondoSaldoActual, 0).toFixed(2)}
+            {formatCurrency(fondos.reduce((sum, f) => sum + f.fondoSaldoActual, 0))}
           </div>
         </div>
       </div>

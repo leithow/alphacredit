@@ -40,6 +40,7 @@ public class AlphaCreditDbContext : DbContext
     public DbSet<PersonaActividad> PersonaActividades { get; set; }
     public DbSet<PersonaReferencia> PersonaReferencias { get; set; }
     public DbSet<PersonaConyuge> PersonasConyuges { get; set; }
+    public DbSet<PersonaDocumento> PersonaDocumentos { get; set; }
 
     // Organizaciones
     public DbSet<Empresa> Empresas { get; set; }
@@ -58,10 +59,15 @@ public class AlphaCreditDbContext : DbContext
     // Garantías
     public DbSet<Garantia> Garantias { get; set; }
     public DbSet<PrestamoGarantia> PrestamosGarantias { get; set; }
+    public DbSet<GarantiaDocumento> GarantiaDocumentos { get; set; }
 
     // Fondos
     public DbSet<Fondo> Fondos { get; set; }
     public DbSet<FondoMovimiento> FondosMovimientos { get; set; }
+
+    // Documentos de Préstamos
+    public DbSet<PrestamoDocumento> PrestamosDocumentos { get; set; }
+    public DbSet<PrestamoDocumentoImpresion> PrestamosDocumentosImpresiones { get; set; }
 
     // Sistema
     public DbSet<ParametrosSistema> ParametrosSistema { get; set; }
