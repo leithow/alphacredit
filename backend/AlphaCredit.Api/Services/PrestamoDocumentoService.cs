@@ -322,6 +322,9 @@ public class PrestamoDocumentoService
         html.AppendLine("        .total-row { font-weight: bold; background-color: #e3f2fd !important; }");
         html.AppendLine("        .summary { margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 5px; }");
         html.AppendLine("        .summary-item { display: flex; justify-content: space-between; margin: 10px 0; font-size: 16px; }");
+        html.AppendLine("        .signature-section { margin-top: 100px; }");
+        html.AppendLine("        .signature-line { border-top: 2px solid #000; width: 400px; margin: 80px auto 10px; }");
+        html.AppendLine("        .signature-label { text-align: center; font-size: 12px; }");
         html.AppendLine("    </style>");
         html.AppendLine("</head>");
         html.AppendLine("<body>");
@@ -392,11 +395,18 @@ public class PrestamoDocumentoService
         html.AppendLine("        </div>");
         html.AppendLine("    </div>");
 
-        html.AppendLine("    <div style='margin-top: 40px; font-size: 12px; color: #666; text-align: center;'>");
-        html.AppendLine("        <p>Este plan de pagos es una proyección y puede variar en caso de pagos anticipados, mora o cambios en las condiciones del préstamo.</p>");
-        html.AppendLine($"        <p>Para más información contacte a ALPHACREDIT - {prestamo.Sucursal.SucursalNombre}</p>");
+        html.AppendLine("    <div style='margin-top: 40px; font-size: 12px; color: #000; text-align: center;'>");
+        html.AppendLine("        <p>El deudor se compromete a realizar los pagos en las fechas establecidas en este plan. </p>");
+        html.AppendLine($"        <p>En caso de mora, se aplicará el interés moratorio pactado en el contrato de préstamo.</p>");
         html.AppendLine("    </div>");
+       html.AppendLine("    </div>");
 
+        html.AppendLine("    <div class='signature-section'>");
+        html.AppendLine("        <div class='signature-line'></div>");
+        html.AppendLine("        <div class='signature-label'><strong>FIRMA DEL DEUDOR</strong></div>");
+        html.AppendLine($"        <div class='signature-label'>{prestamo.Persona.PersonaNombreCompleto}</div>");
+        html.AppendLine($"        <div class='signature-label'>Identidad: {prestamo.Persona.PersonaIdentificacion}</div>");
+        html.AppendLine("    </div>");
         html.AppendLine("</body>");
         html.AppendLine("</html>");
 

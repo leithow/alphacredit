@@ -67,7 +67,7 @@ public class PrestamosController : ControllerBase
             });
         }
 
-        // PASO 3: Obtener datos SIN includes primero
+      //obtener datos con includes y paginacion
         var prestamos = await query
         .Include(p => p.Persona)
         .Include(p => p.EstadoPrestamo)
@@ -76,7 +76,7 @@ public class PrestamosController : ControllerBase
             .Take(pageSize)
             .ToListAsync();
 
-        _logger.LogInformation($"Préstamos obtenidos SIN includes: {prestamos.Count}");
+        _logger.LogInformation($"Préstamos obtenidos con include: {prestamos.Count}");
 
         Response.Headers.Add("X-Total-Count", totalRecords.ToString());
         Response.Headers.Add("X-Page-Number", pageNumber.ToString());
