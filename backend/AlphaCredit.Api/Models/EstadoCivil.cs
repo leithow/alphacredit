@@ -22,7 +22,7 @@ public class EstadoCivil
     [Column("estadocivilestaactivo")]
     public bool EstadoCivilEstaActivo { get; set; }
 
-    [Column("estadocivilrequiereconyuge")]
+     [Column("estadocivilrequiereconyuge")]
     public bool EstadoCivilRequiereConyuge { get; set; }
 
     // Navigation properties

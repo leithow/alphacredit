@@ -61,7 +61,7 @@ public class PrestamoDocumentoService
 
         // Encabezado
         html.AppendLine("    <div class='header'>");
-        html.AppendLine("        <div class='title'>CONTRATO DE PRÉSTAMO DE DINERO</div>");
+        html.AppendLine("        <div class='title'>CONTRATO DE PRÉSTAMO</div>");
         html.AppendLine($"        <div>Contrato No. {prestamo.PrestamoNumero}</div>");
         html.AppendLine($"        <div>Fecha: {DateTime.Now:dd/MM/yyyy}</div>");
         html.AppendLine("    </div>");

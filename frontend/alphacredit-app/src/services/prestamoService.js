@@ -6,14 +6,24 @@ class PrestamoService {
    * Obtiene la lista de préstamos con paginación
    * @param {number} pageNumber - Número de página
    * @param {number} pageSize - Tamaño de página
-   * @param {number} personaId - Filtrar por persona (opcional)
-   * @param {number} estadoId - Filtrar por estado (opcional)
+   * @param {Object|number} filtersOrPersonaId - Objeto de filtros {search, estadoPrestamoId} o personaId para compatibilidad
+   * @param {number} estadoId - Filtrar por estado (opcional, para compatibilidad)
    * @returns {Promise} Lista de préstamos
    */
-  async getPrestamos(pageNumber = 1, pageSize = 10, personaId = null, estadoId = null) {
+  async getPrestamos(pageNumber = 1, pageSize = 10, filtersOrPersonaId = null, estadoId = null) {
     try {
       const params = { pageNumber, pageSize };
-      if (personaId) params.personaId = personaId;
+
+      // Si se pasa un objeto de filtros
+      if (filtersOrPersonaId && typeof filtersOrPersonaId === 'object') {
+        if (filtersOrPersonaId.search) params.search = filtersOrPersonaId.search;
+        if (filtersOrPersonaId.estadoPrestamoId) params.estadoId = filtersOrPersonaId.estadoPrestamoId;
+      }
+      // Si se pasa personaId directamente (compatibilidad con versión anterior)
+      else if (filtersOrPersonaId) {
+        params.personaId = filtersOrPersonaId;
+      }
+
       if (estadoId) params.estadoId = estadoId;
 
       const response = await axiosInstance.get(API_ENDPOINTS.PRESTAMOS, { params });
