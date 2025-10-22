@@ -32,13 +32,15 @@ const PrestamosList = () => {
         pagination.pageSize,
         filters
       );
-      setPrestamos(response.data);
+      // Asegurar que siempre sea un array
+      setPrestamos(Array.isArray(response.data) ? response.data : []);
       setPagination((prev) => ({
         ...prev,
-        totalCount: response.totalCount,
+        totalCount: response.totalCount || 0,
       }));
     } catch (error) {
       console.error('Error al cargar préstamos:', error);
+      setPrestamos([]); // Resetear a array vacío en caso de error
       alert('Error al cargar los préstamos');
     } finally {
       setLoading(false);
@@ -165,10 +167,11 @@ const PrestamosList = () => {
     }));
   };
 
-  // Calcular estadísticas
-  const totalMontoPrestado = prestamos.reduce((sum, p) => sum + (p.prestamoMonto || 0), 0);
-  const totalSaldoCapital = prestamos.reduce((sum, p) => sum + (p.prestamosaldocapital || 0), 0);
-  const prestamosActivos = prestamos.filter(p => (p.prestamosaldocapital || 0) > 0).length;
+  // Calcular estadísticas - asegurar que prestamos sea un array
+  const prestamosArray = Array.isArray(prestamos) ? prestamos : [];
+  const totalMontoPrestado = prestamosArray.reduce((sum, p) => sum + (p.prestamoMonto || 0), 0);
+  const totalSaldoCapital = prestamosArray.reduce((sum, p) => sum + (p.prestamosaldocapital || 0), 0);
+  const prestamosActivos = prestamosArray.filter(p => (p.prestamosaldocapital || 0) > 0).length;
 
   return (
     <div className="prestamos-list-container">

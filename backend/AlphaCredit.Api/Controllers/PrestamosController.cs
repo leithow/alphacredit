@@ -25,54 +25,82 @@ public class PrestamosController : ControllerBase
     }
 
     // GET: api/prestamos
-    [HttpGet]
     public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamos(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] long? personaId = null,
-        [FromQuery] long? estadoId = null)
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] long? personaId = null,
+    [FromQuery] long? estadoId = null)
+{
+    try
     {
-        try
+        _logger.LogInformation("=== INICIO GetPrestamos ===");
+        
+        // PASO 1: Query básica SIN includes
+        var query = _context.Prestamos.AsQueryable();
+        
+        _logger.LogInformation("Query inicial creada");
+
+        // Filtros opcionales
+        if (personaId.HasValue)
         {
-            var query = _context.Prestamos
-                .Include(p => p.Persona)
-                .Include(p => p.EstadoPrestamo)
-                .Include(p => p.FrecuenciaPago)
-                .Include(p => p.DestinoCredito)
-                .Include(p => p.Sucursal)
-                .AsQueryable();
-
-            // Filtros opcionales
-            if (personaId.HasValue)
-            {
-                query = query.Where(p => p.PersonaId == personaId.Value);
-            }
-
-            if (estadoId.HasValue)
-            {
-                query = query.Where(p => p.EstadoPrestamoId == estadoId.Value);
-            }
-
-            var totalRecords = await query.CountAsync();
-
-            var prestamos = await query
-                .OrderByDescending(p => p.PrestamoFechaDesembolso)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
-            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
-            Response.Headers.Add("X-Page-Size", pageSize.ToString());
-
-            return Ok(prestamos);
+            query = query.Where(p => p.PersonaId == personaId.Value);
+            _logger.LogInformation($"Filtro PersonaId aplicado: {personaId.Value}");
         }
-        catch (Exception ex)
+        
+        if (estadoId.HasValue)
         {
-            _logger.LogError(ex, "Error al obtener los préstamos");
-            return StatusCode(500, "Error interno del servidor");
+            query = query.Where(p => p.EstadoPrestamoId == estadoId.Value);
+            _logger.LogInformation($"Filtro EstadoId aplicado: {estadoId.Value}");
         }
+
+        // PASO 2: Contar SIN includes
+        var totalRecords = await query.CountAsync();
+        _logger.LogInformation($"Total de registros: {totalRecords}");
+
+        if (totalRecords == 0)
+        {
+            _logger.LogWarning("No se encontraron registros");
+            return Ok(new { 
+                data = new List<Prestamo>(), 
+                total = 0,
+                message = "No se encontraron préstamos con los filtros aplicados"
+            });
+        }
+
+      //obtener datos con includes y paginacion
+        var prestamos = await query
+        .Include(p => p.Persona)
+        .Include(p => p.EstadoPrestamo)
+            .OrderByDescending(p => p.PrestamoFechaDesembolso)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        _logger.LogInformation($"Préstamos obtenidos con include: {prestamos.Count}");
+
+        Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+        Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+        Response.Headers.Add("X-Page-Size", pageSize.ToString());
+
+        return Ok(prestamos);
     }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "ERROR en GetPrestamos: {Message}", ex.Message);
+        _logger.LogError("StackTrace: {StackTrace}", ex.StackTrace);
+        
+        if (ex.InnerException != null)
+        {
+            _logger.LogError("InnerException: {InnerMessage}", ex.InnerException.Message);
+        }
+        
+        return StatusCode(500, new { 
+            error = "Error interno del servidor", 
+            details = ex.Message,
+            innerError = ex.InnerException?.Message
+        });
+    }
+}
 
     // GET: api/prestamos/5
     [HttpGet("{id}")]
