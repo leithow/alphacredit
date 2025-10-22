@@ -61,7 +61,7 @@
 .stat-content h3 {
   margin: 0 0 8px 0;
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: white;
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -70,12 +70,12 @@
 .stat-number {
   font-size: 2rem;
   font-weight: bold;
-  color: #2c3e50;
+  color: white;
   margin: 0 0 8px 0;
 }
 
 .stat-link {
-  color: #3498db;
+  color: white;
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;

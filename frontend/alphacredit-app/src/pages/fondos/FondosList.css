@@ -51,6 +51,7 @@
 .stat-label {
   font-size: 12px;
   opacity: 0.9;
+  color: white;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 8px;
@@ -59,6 +60,7 @@
 .stat-value {
   font-size: 32px;
   font-weight: bold;
+  color: #333;
 }
 
 .saldo {
