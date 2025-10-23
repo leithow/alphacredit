@@ -925,7 +925,7 @@ public class CatalogsController : ControllerBase
     {
         try
         {
-            var query = _context.FormasPago.AsQueryable();
+            var query = _context.FormasPago.Include(f => f.Fondo).AsQueryable();
 
             if (soloActivos.HasValue && soloActivos.Value)
             {

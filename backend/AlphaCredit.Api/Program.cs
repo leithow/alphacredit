@@ -26,7 +26,12 @@ builder.Services.Configure<FileStorageSettings>(
     builder.Configuration.GetSection("FileStorage"));
 
 // Add Application Services
+builder.Services.AddScoped<FechaSistemaService>();
 builder.Services.AddScoped<PrestamoAmortizacionService>();
+builder.Services.AddScoped<PrestamoMoraService>();
+builder.Services.AddScoped<PrestamoMoraCalculoService>();
+builder.Services.AddScoped<PrestamoAbonoService>();
+builder.Services.AddScoped<PrestamoEstadoCuentaService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // Add CORS configuration

@@ -19,9 +19,15 @@ public class FormaPago
     [MaxLength(200)]
     public string? FormaPagoDescripcion { get; set; }
 
+    [Column("fondoid")]
+    public long? FondoId { get; set; }
+
     [Column("formapagoestaactiva")]
     public bool FormaPagoEstaActiva { get; set; }
 
     // Navigation properties
+    [ForeignKey("FondoId")]
+    public virtual Fondo? Fondo { get; set; }
+
     public virtual ICollection<MovimientoPrestamo> MovimientosPrestamo { get; set; } = new List<MovimientoPrestamo>();
 }

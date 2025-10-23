@@ -55,6 +55,7 @@ public class AlphaCreditDbContext : DbContext
     public DbSet<Prestamo> Prestamos { get; set; }
     public DbSet<PrestamoComponente> PrestamosComponentes { get; set; }
     public DbSet<MovimientoPrestamo> MovimientosPrestamo { get; set; }
+    public DbSet<PagoDetalle> PagosDetalles { get; set; }
 
     // Garantías
     public DbSet<Garantia> Garantias { get; set; }
@@ -159,5 +160,6 @@ public class AlphaCreditDbContext : DbContext
         modelBuilder.HasSequence<long>("tipoidentificacionid");
         modelBuilder.HasSequence<long>("transaccionid");
         modelBuilder.HasSequence<long>("ubicaciongeograficaid");
+        modelBuilder.HasSequence<long>("pagodetalleid");
     }
 }

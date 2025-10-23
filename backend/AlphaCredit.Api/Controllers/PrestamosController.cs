@@ -537,6 +537,56 @@ public class PrestamosController : ControllerBase
         }
     }
 
+    // GET: api/prestamos/buscar?termino=xxx
+    [HttpGet("buscar")]
+    public async Task<ActionResult<IEnumerable<object>>> BuscarPrestamos([FromQuery] string termino)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+            {
+                return BadRequest(new { message = "El término de búsqueda no puede estar vacío" });
+            }
+
+            termino = termino.ToUpper().Trim();
+
+            var prestamos = await _context.Prestamos
+                .Include(p => p.Persona)
+                .Include(p => p.EstadoPrestamo)
+                .Where(p =>
+                    p.PrestamoNumero.ToUpper().Contains(termino) ||
+                    (p.Persona.PersonaPrimerNombre + " " + p.Persona.PersonaPrimerApellido).ToUpper().Contains(termino) ||
+                    (p.Persona.PersonaPrimerNombre + " " + p.Persona.PersonaSegundoNombre + " " + p.Persona.PersonaPrimerApellido + " " + p.Persona.PersonaSegundoApellido).ToUpper().Contains(termino)
+                )
+                .OrderByDescending(p => p.PrestamoFechaDesembolso)
+                .Take(20)
+                .Select(p => new
+                {
+                    prestamoId = p.PrestamoId,
+                    prestamoNumero = p.PrestamoNumero,
+                    nombreCliente = p.Persona.PersonaPrimerNombre + " " +
+                                   (string.IsNullOrEmpty(p.Persona.PersonaSegundoNombre) ? "" : p.Persona.PersonaSegundoNombre + " ") +
+                                   p.Persona.PersonaPrimerApellido + " " +
+                                   (string.IsNullOrEmpty(p.Persona.PersonaSegundoApellido) ? "" : p.Persona.PersonaSegundoApellido),
+                    prestamoMonto = p.PrestamoMonto,
+                    prestamoSaldoCapital = p.PrestamoSaldoCapital,
+                    prestamoSaldoInteres = p.PrestamoSaldoInteres,
+                    prestamoSaldoMora = p.PrestamoSaldoMora,
+                    prestamoFechaDesembolso = p.PrestamoFechaDesembolso,
+                    estadoPrestamoId = p.EstadoPrestamoId,
+                    estadoPrestamoNombre = p.EstadoPrestamo.EstadoPrestamoNombre
+                })
+                .ToListAsync();
+
+            return Ok(prestamos);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al buscar préstamos con término: {Termino}", termino);
+            return StatusCode(500, new { message = "Error interno del servidor", error = ex.Message });
+        }
+    }
+
     // GET: api/prestamos/5/amortizacion
     [HttpGet("{id}/amortizacion")]
     public async Task<ActionResult<IEnumerable<CuotaAmortizacion>>> GetTablaAmortizacion(long id)
