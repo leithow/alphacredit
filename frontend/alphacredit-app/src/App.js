@@ -10,6 +10,7 @@ import GarantiasList from './pages/garantias/GarantiasList';
 import GarantiaForm from './pages/garantias/GarantiaForm';
 import FondosList from './pages/fondos/FondosList';
 import FondoForm from './pages/fondos/FondoForm';
+import TransaccionesPage from './pages/Transacciones/TransaccionesPage';
 import './App.css';
 
 function App() {
@@ -43,6 +44,9 @@ function App() {
             <Route path="/fondos" element={<FondosList />} />
             <Route path="/fondos/nuevo" element={<FondoForm />} />
             <Route path="/fondos/:id" element={<FondoForm />} />
+
+            {/* Transacciones */}
+            <Route path="/transacciones" element={<TransaccionesPage />} />
           </Routes>
         </main>
       </div>

@@ -11,14 +11,19 @@ public class PrestamoEstadoCuentaService
 {
     private readonly AlphaCreditDbContext _context;
     private readonly PrestamoMoraService _moraService;
+    private readonly FechaSistemaService _fechaSistemaService;
 
     private const string COMPONENTE_CAPITAL = "CAPITAL";
     private const string COMPONENTE_INTERES = "INTERES";
 
-    public PrestamoEstadoCuentaService(AlphaCreditDbContext context, PrestamoMoraService moraService)
+    public PrestamoEstadoCuentaService(
+        AlphaCreditDbContext context,
+        PrestamoMoraService moraService,
+        FechaSistemaService fechaSistemaService)
     {
         _context = context;
         _moraService = moraService;
+        _fechaSistemaService = fechaSistemaService;
     }
 
     /// <summary>
@@ -38,7 +43,7 @@ public class PrestamoEstadoCuentaService
         if (prestamo == null)
             throw new InvalidOperationException($"Préstamo {prestamoId} no encontrado");
 
-        var fechaActual = DateTime.Now;
+        var fechaActual = await _fechaSistemaService.ObtenerFechaActualAsync();
 
         // Calcular mora actualizada
         await _moraService.ActualizarSaldoMoraPrestamoAsync(prestamoId, fechaActual);
@@ -103,10 +108,10 @@ public class PrestamoEstadoCuentaService
             int diasVencidos = 0;
             bool estaVencida = false;
 
-            if (fechaVencimiento.HasValue && fechaVencimiento.Value < fechaActual)
+            if (fechaVencimiento.HasValue && fechaVencimiento.Value.Date <= fechaActual.Date)
             {
-                diasVencidos = (fechaActual - fechaVencimiento.Value).Days;
-                estaVencida = true;
+                diasVencidos = (fechaActual.Date - fechaVencimiento.Value.Date).Days;
+                estaVencida = diasVencidos > 0;
             }
 
             // Calcular mora de la cuota
@@ -161,10 +166,10 @@ public class PrestamoEstadoCuentaService
         if (totalSaldo < totalMonto)
             return "Parcial";
 
-        var fechaActual = DateTime.Now;
+        var fechaActual = _fechaSistemaService.ObtenerFechaActual();
         var fechaVencimiento = componentes.FirstOrDefault()?.PrestamoComponenteFechaVencimiento;
 
-        if (fechaVencimiento.HasValue && fechaVencimiento.Value < fechaActual)
+        if (fechaVencimiento.HasValue && fechaVencimiento.Value.Date < fechaActual)
             return "Vencida";
 
         return "Pendiente";

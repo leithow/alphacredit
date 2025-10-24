@@ -1,0 +1,479 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-contenido {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.estado-cuenta-modal {
+  max-width: 1200px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.modal-header h2 {
+  font-size: 22px;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.btn-cerrar-modal {
+  width: 35px;
+  height: 35px;
+  border: none;
+  background: #ecf0f1;
+  color: #7f8c8d;
+  font-size: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-cerrar-modal:hover {
+  background: #e74c3c;
+  color: white;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 25px;
+}
+
+/* Resumen General */
+.resumen-general {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.resumen-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.resumen-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.resumen-item label {
+  font-size: 12px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.resumen-item span {
+  font-size: 15px;
+  color: #2c3e50;
+}
+
+.resumen-item .valor-destacado {
+  font-size: 18px;
+  font-weight: 700;
+  color: #27ae60;
+}
+
+/* Resumen de Saldos */
+.resumen-saldos {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.resumen-saldos h3 {
+  font-size: 16px;
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.saldos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.saldo-box {
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid;
+}
+
+.saldo-box.capital {
+  background: #e8f8f5;
+  border-color: #1abc9c;
+}
+
+.saldo-box.interes {
+  background: #fef5e7;
+  border-color: #f39c12;
+}
+
+.saldo-box.mora {
+  background: #fadbd8;
+  border-color: #e74c3c;
+}
+
+.saldo-box.total {
+  background: #d5f4e6;
+  border-color: #27ae60;
+}
+
+.saldo-box label {
+  display: block;
+  font-size: 12px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.saldo-monto {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.saldo-monto-total {
+  font-size: 22px;
+  font-weight: 700;
+  color: #27ae60;
+}
+
+/* Resumen de Cuotas */
+.resumen-cuotas {
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.cuota-stat {
+  text-align: center;
+}
+
+.cuota-stat label {
+  display: block;
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+}
+
+.stat-valor {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stat-valor.pagadas {
+  color: #27ae60;
+}
+
+.stat-valor.pendientes {
+  color: #e74c3c;
+}
+
+.stat-valor.total {
+  color: #3498db;
+}
+
+/* Filtros */
+.cuotas-filtros {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filtro-btn {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid #dcdcdc;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #7f8c8d;
+  transition: all 0.3s;
+}
+
+.filtro-btn:hover {
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.filtro-btn.activo {
+  background: #3498db;
+  border-color: #3498db;
+  color: white;
+}
+
+/* Tabla de Cuotas */
+.cuotas-tabla-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 20px;
+}
+
+.cuotas-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.cuotas-tabla thead {
+  background: #34495e;
+  color: white;
+}
+
+.cuotas-tabla th {
+  padding: 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom: 2px solid #2c3e50;
+}
+
+.cuotas-tabla td {
+  padding: 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.cuota-row {
+  transition: background-color 0.3s;
+}
+
+.cuota-row:hover {
+  background-color: #f8f9fa;
+}
+
+.cuota-row.estado-pagada {
+  background-color: #e8f8f5;
+}
+
+.cuota-row.estado-vencida {
+  background-color: #fadbd8;
+}
+
+.cuota-numero {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.cuota-fecha {
+  color: #34495e;
+}
+
+.dias-vencidos {
+  display: block;
+  font-size: 11px;
+  color: #e74c3c;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.monto-componente,
+.monto-mora,
+.monto-total-cuota,
+.monto-saldo {
+  text-align: right;
+  font-weight: 600;
+}
+
+.saldo-parcial {
+  display: block;
+  font-size: 11px;
+  color: #f39c12;
+  margin-top: 3px;
+}
+
+.monto-mora {
+  color: #e74c3c;
+}
+
+.cuota-estado {
+  text-align: center;
+}
+
+.badge-estado {
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cuota-estado.estado-pagada .badge-estado {
+  background: #27ae60;
+  color: white;
+}
+
+.cuota-estado.estado-pendiente .badge-estado {
+  background: #f39c12;
+  color: white;
+}
+
+.cuota-estado.estado-vencida .badge-estado {
+  background: #e74c3c;
+  color: white;
+}
+
+.sin-resultados-tabla {
+  padding: 40px;
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+/* Detalles de Mora */
+.detalles-mora-section {
+  margin-top: 30px;
+  background: #fff5f5;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #fadbd8;
+}
+
+.detalles-mora-section h3 {
+  font-size: 16px;
+  color: #c0392b;
+  margin-bottom: 15px;
+}
+
+.mora-tabla-container {
+  overflow-x: auto;
+  border-radius: 5px;
+  border: 1px solid #fadbd8;
+}
+
+.mora-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.mora-tabla thead {
+  background: #e74c3c;
+  color: white;
+}
+
+.mora-tabla th {
+  padding: 10px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mora-tabla td {
+  padding: 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #fadbd8;
+}
+
+/* Footer */
+.modal-footer {
+  padding: 15px 25px;
+  border-top: 2px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-cerrar {
+  padding: 10px 30px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.3s;
+}
+
+.btn-cerrar:hover {
+  background-color: #5a6268;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-contenido {
+    max-height: 95vh;
+  }
+
+  .modal-body {
+    padding: 15px;
+  }
+
+  .resumen-card {
+    grid-template-columns: 1fr;
+  }
+
+  .saldos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .resumen-cuotas {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .cuotas-filtros {
+    flex-direction: column;
+  }
+
+  .filtro-btn {
+    width: 100%;
+  }
+
+  .cuotas-tabla {
+    font-size: 12px;
+  }
+
+  .cuotas-tabla th,
+  .cuotas-tabla td {
+    padding: 8px 5px;
+  }
+}

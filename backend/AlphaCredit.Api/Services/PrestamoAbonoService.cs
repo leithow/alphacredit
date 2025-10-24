@@ -153,6 +153,9 @@ public class PrestamoAbonoService
         response.ComponentesAfectados = componentesAfectados;
         response.Mensaje = $"Abono aplicado a {cuotasPendientes.Count(c => c.All(comp => comp.PrestamoComponenteSaldo == 0))} cuota(s) completa(s)";
 
+        // Crear registros de pago detalle
+        await CrearPagosDetalleAsync(movimiento.MovimientoPrestamoId, componentesAfectados, fechaPago);
+
         return response;
     }
 
@@ -212,6 +215,9 @@ public class PrestamoAbonoService
         response.MontoAplicado = response.MontoCapital + response.MontoInteres + response.MontoMora + response.MontoOtros;
         response.ComponentesAfectados = componentesAfectados;
         response.Mensaje = "Abono parcial aplicado correctamente";
+
+        // Crear registros de pago detalle
+        await CrearPagosDetalleAsync(movimiento.MovimientoPrestamoId, componentesAfectados, fechaPago);
 
         return response;
     }
@@ -274,6 +280,9 @@ public class PrestamoAbonoService
         response.MontoAplicado = request.Monto - montoRestante;
         response.ComponentesAfectados = componentesAfectados;
         response.Mensaje = $"Abono a capital aplicado. Monto: {response.MontoAplicado:C}";
+
+        // Crear registros de pago detalle
+        await CrearPagosDetalleAsync(movimiento.MovimientoPrestamoId, componentesAfectados, fechaPago);
 
         return response;
     }
@@ -342,6 +351,9 @@ public class PrestamoAbonoService
         response.MontoAplicado = response.MontoMora;
         response.ComponentesAfectados = componentesAfectados;
         response.Mensaje = $"Pago de mora aplicado. Monto: {response.MontoMora:C}";
+
+        // Crear registros de pago detalle
+        await CrearPagosDetalleAsync(movimiento.MovimientoPrestamoId, componentesAfectados, fechaPago);
 
         return response;
     }
@@ -608,19 +620,7 @@ public class PrestamoAbonoService
 
         componente.EstadoComponenteId = estadoPagadoId;
 
-        // Crear detalle de pago
-        var pagoDetalle = new PagoDetalle
-        {
-            MovimientoPrestamoId = 0, // Se asignará después
-            PrestamoComponenteId = componente.PrestamoComponenteId,
-            ComponentePrestamoId = componente.ComponentePrestamoId,
-            PagoDetalleCuotaNumero = componente.PrestamoComponenteNumeroCuota,
-            PagoDetalleMontoAplicado = montoPago,
-            PagoDetalleMontoAntes = montoAntes,
-            PagoDetalleFechaAplicacion = fechaPago
-        };
-
-        _context.Add(pagoDetalle);
+        // NO crear pagodetalle aquí - se creará después cuando tengamos el MovimientoPrestamoId
 
         return new ComponenteAfectadoDto
         {
@@ -661,7 +661,7 @@ public class PrestamoAbonoService
             MovimientoPrestamoMontoTotal = montoTotal,
             MovimientoPrestamoObservaciones = observaciones,
             MovimientoPrestamoUserCrea = usuarioCreador,
-            MovimientoPrestamoFechaCreacion = DateTime.Now
+            MovimientoPrestamoFechaCreacion = DateTime.UtcNow
         };
 
         _context.MovimientosPrestamo.Add(movimiento);
@@ -680,6 +680,42 @@ public class PrestamoAbonoService
         }
 
         return movimiento;
+    }
+
+    private async Task CrearPagosDetalleAsync(
+        long movimientoPrestamoId,
+        List<ComponenteAfectadoDto> componentesAfectados,
+        DateTime fechaPago)
+    {
+        foreach (var componente in componentesAfectados)
+        {
+            if (componente.MontoAplicado > 0 && componente.PrestamoComponenteId.HasValue)
+            {
+                var pagoDetalle = new PagoDetalle
+                {
+                    MovimientoPrestamoId = movimientoPrestamoId,
+                    PrestamoComponenteId = componente.PrestamoComponenteId.Value,
+                    ComponentePrestamoId = await ObtenerComponentePrestamoIdPorNombreAsync(componente.ComponenteNombre),
+                    PagoDetalleCuotaNumero = componente.NumeroCuota,
+                    PagoDetalleMontoAplicado = componente.MontoAplicado,
+                    PagoDetalleMontoAntes = componente.MontoAntes,
+                    PagoDetalleFechaAplicacion = fechaPago
+                };
+
+                _context.Add(pagoDetalle);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<long> ObtenerComponentePrestamoIdPorNombreAsync(string nombre)
+    {
+        var componente = await _context.ComponentesPrestamo
+            .FirstOrDefaultAsync(c => c.ComponentePrestamoNombre == nombre);
+
+        return componente?.ComponentePrestamoId ??
+               throw new InvalidOperationException($"Componente de préstamo '{nombre}' no encontrado");
     }
 
     /// <summary>
@@ -715,7 +751,7 @@ public class PrestamoAbonoService
                 ? $"{concepto} - {observacionesAdicionales}"
                 : concepto,
             FondoMovimientoUserCrea = usuarioCreador,
-            FondoMovimientoFechaCreacion = DateTime.Now
+            FondoMovimientoFechaCreacion = DateTime.UtcNow
         };
 
         _context.FondosMovimientos.Add(fondoMovimiento);
@@ -725,7 +761,7 @@ public class PrestamoAbonoService
         if (fondo != null)
         {
             fondo.FondoSaldoActual += monto;
-            fondo.FondoFechaModifica = DateTime.Now;
+            fondo.FondoFechaModifica = DateTime.UtcNow;
             fondo.FondoUserModifica = usuarioCreador;
         }
 
@@ -749,7 +785,7 @@ public class PrestamoAbonoService
             .Where(pc => pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_INTERES)
             .Sum(pc => pc.PrestamoComponenteSaldo);
 
-        prestamo.PrestamoFechaModifica = DateTime.Now;
+        prestamo.PrestamoFechaModifica = DateTime.UtcNow;
     }
 
     private async Task<long> ObtenerEstadoComponenteIdAsync(string nombreEstado)

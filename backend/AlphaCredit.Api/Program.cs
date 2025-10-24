@@ -3,6 +3,10 @@ using AlphaCredit.Api.Data;
 using AlphaCredit.Api.Models;
 using AlphaCredit.Api.Services;
 using System.Text.Json.Serialization;
+using QuestPDF.Infrastructure;
+
+// Configurar licencia de QuestPDF para uso comunitario
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +28,8 @@ builder.Services.AddDbContext<AlphaCreditDbContext>(options =>
 // Add Configuration Options
 builder.Services.Configure<FileStorageSettings>(
     builder.Configuration.GetSection("FileStorage"));
+builder.Services.Configure<CurrencySettings>(
+    builder.Configuration.GetSection("Currency"));
 
 // Add Application Services
 builder.Services.AddScoped<FechaSistemaService>();
@@ -32,6 +38,7 @@ builder.Services.AddScoped<PrestamoMoraService>();
 builder.Services.AddScoped<PrestamoMoraCalculoService>();
 builder.Services.AddScoped<PrestamoAbonoService>();
 builder.Services.AddScoped<PrestamoEstadoCuentaService>();
+builder.Services.AddScoped<ReciboAbonoService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 // Add CORS configuration

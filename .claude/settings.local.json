@@ -14,7 +14,8 @@
       "Bash(set PGPASSWORD=Inicio-123)",
       "Bash(psql:*)",
       "Bash(where psql)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "Bash(dotnet add package:*)"
     ],
     "deny": [],
     "ask": []

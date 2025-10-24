@@ -22,4 +22,9 @@ public class FechaSistema
 
     [Column("fechasistemafechacreacion")]
     public DateTime FechaSistemaFechaCreacion { get; set; }
+    [Column("fechasistemaestacerrado")]
+    public bool FechaSistemaEstaCerrado { get; set; }
+    [Column("fechasistemaesferiado")]
+    public bool FechaSistemaEsFeriado{ get; set; }
+
 }

@@ -36,6 +36,11 @@ const Navbar = () => {
               Fondos
             </Link>
           </li>
+          <li className="navbar-item">
+            <Link to="/transacciones" className="navbar-link">
+              Transacciones
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

@@ -11,15 +11,18 @@ public class PrestamosAbonosController : ControllerBase
     private readonly PrestamoAbonoService _abonoService;
     private readonly PrestamoEstadoCuentaService _estadoCuentaService;
     private readonly PrestamoMoraService _moraService;
+    private readonly ReciboAbonoService _reciboService;
 
     public PrestamosAbonosController(
         PrestamoAbonoService abonoService,
         PrestamoEstadoCuentaService estadoCuentaService,
-        PrestamoMoraService moraService)
+        PrestamoMoraService moraService,
+        ReciboAbonoService reciboService)
     {
         _abonoService = abonoService;
         _estadoCuentaService = estadoCuentaService;
         _moraService = moraService;
+        _reciboService = reciboService;
     }
 
     /// <summary>
@@ -39,11 +42,8 @@ public class PrestamosAbonosController : ControllerBase
     {
         try
         {
-            // Validar que el prestamoId coincida
-            if (request.PrestamoId != prestamoId)
-            {
-                return BadRequest(new { mensaje = "El ID del préstamo no coincide" });
-            }
+            // Asignar el prestamoId de la URL al request
+            request.PrestamoId = prestamoId;
 
             // Obtener usuario del contexto (ajustar según tu implementación de autenticación)
             var usuario = User?.Identity?.Name ?? "SISTEMA";
@@ -58,7 +58,11 @@ public class PrestamosAbonosController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { mensaje = "Error al aplicar el abono", detalle = ex.Message });
+            var detalleCompleto = ex.InnerException != null
+                ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
+                : ex.Message;
+
+            return StatusCode(500, new { mensaje = "Error al aplicar el abono", detalle = detalleCompleto, stackTrace = ex.StackTrace });
         }
     }
 
@@ -152,6 +156,28 @@ public class PrestamosAbonosController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { mensaje = "Error al simular abono", detalle = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Genera y descarga el recibo de un pago en PDF
+    /// </summary>
+    [HttpGet("abonos/{movimientoPrestamoId}/recibo")]
+    public async Task<ActionResult> ObtenerReciboPdf(long movimientoPrestamoId)
+    {
+        try
+        {
+            var pdfBytes = await _reciboService.GenerarReciboPdfAsync(movimientoPrestamoId);
+
+            return File(pdfBytes, "application/pdf", $"Recibo-Pago-{movimientoPrestamoId}.pdf");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { mensaje = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { mensaje = "Error al generar recibo", detalle = ex.Message });
         }
     }
 }
