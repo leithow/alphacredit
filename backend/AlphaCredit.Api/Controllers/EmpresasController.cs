@@ -20,13 +20,28 @@ public class EmpresasController : ControllerBase
 
     // GET: api/empresas
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Empresa>>> GetEmpresas()
+    public async Task<ActionResult<IEnumerable<Empresa>>> GetEmpresas(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var empresas = await _context.Empresas
+            var query = _context.Empresas
                 .Where(e => e.EmpresaEstaActiva)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var empresas = await query
+                .OrderBy(e => e.EmpresaNombre)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
+
             return Ok(empresas);
         }
         catch (Exception ex)

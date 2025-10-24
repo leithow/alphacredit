@@ -608,6 +608,10 @@ public class ReciboAbonoService
                 col.Item().Text("Gracias por su pago").FontSize(7).Bold();
                 col.Item().Text($"Generado: {datos.FechaCreacion:dd/MM/yyyy HH:mm}").FontSize(5);
             });
+
+            // Espacio adicional antes del corte (para impresoras térmicas POS)
+            // Esto asegura que todo el contenido se imprima antes del corte
+            column.Item().PaddingTop(10).Text(" ").FontSize(1);
         });
     }
 

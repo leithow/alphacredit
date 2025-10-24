@@ -269,16 +269,30 @@ public class GarantiasController : ControllerBase
 
     // GET: api/garantias/persona/5
     [HttpGet("persona/{personaId}")]
-    public async Task<ActionResult<IEnumerable<Garantia>>> GetGarantiasByPersona(long personaId)
+    public async Task<ActionResult<IEnumerable<Garantia>>> GetGarantiasByPersona(
+        long personaId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var garantias = await _context.Garantias
+            var query = _context.Garantias
                 .Where(g => g.PersonaId == personaId)
                 .Include(g => g.TipoGarantia)
                 .Include(g => g.EstadoGarantia)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var garantias = await query
                 .OrderByDescending(g => g.GarantiaFechaCreacion)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(garantias);
         }
@@ -291,7 +305,10 @@ public class GarantiasController : ControllerBase
 
     // GET: api/garantias/disponibles
     [HttpGet("disponibles")]
-    public async Task<ActionResult<IEnumerable<GarantiaDisponibleDto>>> GetGarantiasDisponibles([FromQuery] long? personaId = null)
+    public async Task<ActionResult<IEnumerable<GarantiaDisponibleDto>>> GetGarantiasDisponibles(
+        [FromQuery] long? personaId = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -338,7 +355,17 @@ public class GarantiasController : ControllerBase
             .OrderByDescending(g => g.ValorDisponible)
             .ToList();
 
-            return Ok(garantiasDisponibles);
+            var totalRecords = garantiasDisponibles.Count;
+            var paginatedGarantias = garantiasDisponibles
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
+
+            return Ok(paginatedGarantias);
         }
         catch (Exception ex)
         {

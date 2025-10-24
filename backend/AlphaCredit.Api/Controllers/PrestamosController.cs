@@ -490,16 +490,30 @@ public class PrestamosController : ControllerBase
 
     // GET: api/prestamos/persona/5
     [HttpGet("persona/{personaId}")]
-    public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamosByPersona(long personaId)
+    public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamosByPersona(
+        long personaId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var prestamos = await _context.Prestamos
+            var query = _context.Prestamos
                 .Where(p => p.PersonaId == personaId)
                 .Include(p => p.EstadoPrestamo)
                 .Include(p => p.FrecuenciaPago)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var prestamos = await query
                 .OrderByDescending(p => p.PrestamoFechaDesembolso)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(prestamos);
         }
@@ -512,7 +526,9 @@ public class PrestamosController : ControllerBase
 
     // GET: api/prestamos/activos
     [HttpGet("activos")]
-    public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamosActivos()
+    public async Task<ActionResult<IEnumerable<Prestamo>>> GetPrestamosActivos(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -521,12 +537,23 @@ public class PrestamosController : ControllerBase
                 .Select(e => e.EstadoPrestamoId)
                 .FirstOrDefaultAsync();
 
-            var prestamos = await _context.Prestamos
+            var query = _context.Prestamos
                 .Where(p => p.EstadoPrestamoId == estadoActivo && p.PrestamoSaldoCapital > 0)
                 .Include(p => p.Persona)
                 .Include(p => p.EstadoPrestamo)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var prestamos = await query
                 .OrderByDescending(p => p.PrestamoFechaDesembolso)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(prestamos);
         }

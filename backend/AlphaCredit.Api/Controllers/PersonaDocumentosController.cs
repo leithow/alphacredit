@@ -26,7 +26,10 @@ public class PersonaDocumentosController : ControllerBase
 
     // GET: api/personas/5/documentos
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<PersonaDocumento>>> GetDocumentos(long personaId)
+    public async Task<ActionResult<IEnumerable<PersonaDocumento>>> GetDocumentos(
+        long personaId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -36,10 +39,21 @@ public class PersonaDocumentosController : ControllerBase
                 return NotFound(new { message = "Persona no encontrada" });
             }
 
-            var documentos = await _context.PersonaDocumentos
+            var query = _context.PersonaDocumentos
                 .Where(d => d.PersonaId == personaId)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var documentos = await query
                 .OrderByDescending(d => d.PersonaDocumentoFechaCreacion)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(documentos);
         }

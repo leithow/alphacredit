@@ -253,16 +253,29 @@ public class FondosController : ControllerBase
 
     // GET: api/fondos/activos
     [HttpGet("activos")]
-    public async Task<ActionResult<IEnumerable<Fondo>>> GetFondosActivos()
+    public async Task<ActionResult<IEnumerable<Fondo>>> GetFondosActivos(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var fondos = await _context.Fondos
+            var query = _context.Fondos
                 .Where(f => f.FondoEstaActivo)
                 .Include(f => f.TipoFondo)
                 .Include(f => f.Moneda)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var fondos = await query
                 .OrderBy(f => f.FondoNombre)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(fondos);
         }
@@ -275,7 +288,10 @@ public class FondosController : ControllerBase
 
     // GET: api/fondos/disponibles
     [HttpGet("disponibles")]
-    public async Task<ActionResult<IEnumerable<Fondo>>> GetFondosDisponibles([FromQuery] decimal? montoMinimo = null)
+    public async Task<ActionResult<IEnumerable<Fondo>>> GetFondosDisponibles(
+        [FromQuery] decimal? montoMinimo = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
@@ -290,9 +306,17 @@ public class FondosController : ControllerBase
                 query = query.Where(f => f.FondoSaldoActual >= montoMinimo.Value);
             }
 
+            var totalRecords = await query.CountAsync();
+
             var fondos = await query
                 .OrderByDescending(f => f.FondoSaldoActual)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(fondos);
         }

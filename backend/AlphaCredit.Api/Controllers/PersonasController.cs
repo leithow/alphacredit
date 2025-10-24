@@ -322,15 +322,28 @@ public class PersonasController : ControllerBase
 
     // GET: api/personas/clientes
     [HttpGet("clientes")]
-    public async Task<ActionResult<IEnumerable<Persona>>> GetClientes()
+    public async Task<ActionResult<IEnumerable<Persona>>> GetClientes(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var clientes = await _context.Personas
+            var query = _context.Personas
                 .Where(p => p.PersonaEsCliente && p.PersonaEstaActiva)
                 .Include(p => p.TipoIdentificacion)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var clientes = await query
                 .OrderBy(p => p.PersonaNombreCompleto)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
             return Ok(clientes);
         }

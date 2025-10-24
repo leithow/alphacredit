@@ -21,14 +21,29 @@ public class SucursalesController : ControllerBase
 
     // GET: api/sucursales
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Sucursal>>> GetSucursales()
+    public async Task<ActionResult<IEnumerable<Sucursal>>> GetSucursales(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
     {
         try
         {
-            var sucursales = await _context.Sucursales
+            var query = _context.Sucursales
                 .Include(s => s.Empresa)
                 .Where(s => s.SucursalEstaActiva)
+                .AsQueryable();
+
+            var totalRecords = await query.CountAsync();
+
+            var sucursales = await query
+                .OrderBy(s => s.SucursalNombre)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            Response.Headers.Add("X-Total-Count", totalRecords.ToString());
+            Response.Headers.Add("X-Page-Number", pageNumber.ToString());
+            Response.Headers.Add("X-Page-Size", pageSize.ToString());
+
             return Ok(sucursales);
         }
         catch (Exception ex)
