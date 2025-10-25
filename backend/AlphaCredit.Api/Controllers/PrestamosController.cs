@@ -327,8 +327,82 @@ public class PrestamosController : ControllerBase
             fondo.FondoFechaModifica = DateTime.UtcNow;
             fondo.FondoUserModifica = request.PrestamoUserCrea ?? "system";
 
-            // Procesar garantías si se proporcionaron
-            _logger.LogInformation("Procesando garantías. Request.Garantias: {Garantias}", request.Garantias);
+            // Procesar garantías nuevas si se proporcionaron
+            _logger.LogInformation("Procesando garantías nuevas. Request.GarantiasNuevas: {GarantiasNuevas}", request.GarantiasNuevas);
+            if (request.GarantiasNuevas != null && request.GarantiasNuevas.Any())
+            {
+                _logger.LogInformation("Se encontraron {Count} garantías nuevas para crear y asociar", request.GarantiasNuevas.Count);
+
+                foreach (var garantiaNuevaDto in request.GarantiasNuevas)
+                {
+                    _logger.LogInformation("Creando nueva garantía: {Descripcion}", garantiaNuevaDto.GarantiaDescripcion);
+
+                    // Validar que el tipo de garantía existe
+                    var tipoGarantia = await _context.TiposGarantia.FindAsync(garantiaNuevaDto.TipoGarantiaId);
+                    if (tipoGarantia == null)
+                    {
+                        return BadRequest(new { message = $"El tipo de garantía con ID {garantiaNuevaDto.TipoGarantiaId} no existe" });
+                    }
+
+                    // Validar fiador para garantías fiduciarias
+                    if (tipoGarantia.TipoGarantiaNombre.ToUpper().Contains("FIDUCIARIA"))
+                    {
+                        if (!garantiaNuevaDto.PersonaFiadorId.HasValue)
+                        {
+                            return BadRequest(new { message = $"La garantía fiduciaria '{garantiaNuevaDto.GarantiaDescripcion}' requiere un fiador" });
+                        }
+
+                        if (garantiaNuevaDto.PersonaFiadorId == prestamo.PersonaId)
+                        {
+                            return BadRequest(new { message = $"El fiador de la garantía '{garantiaNuevaDto.GarantiaDescripcion}' no puede ser la misma persona que el propietario del préstamo" });
+                        }
+                    }
+
+                    // Crear la nueva garantía
+                    var nuevaGarantia = new Garantia
+                    {
+                        PersonaId = garantiaNuevaDto.PersonaId,
+                        TipoGarantiaId = garantiaNuevaDto.TipoGarantiaId,
+                        EstadoGarantiaId = garantiaNuevaDto.EstadoGarantiaId,
+                        PersonaFiadorId = garantiaNuevaDto.PersonaFiadorId,
+                        GarantiaDescripcion = garantiaNuevaDto.GarantiaDescripcion,
+                        GarantiaValorComercial = garantiaNuevaDto.GarantiaValorComercial,
+                        GarantiaValorRealizable = garantiaNuevaDto.GarantiaValorRealizable,
+                        GarantiaObservaciones = garantiaNuevaDto.GarantiaObservaciones,
+                        GarantiaUserCrea = garantiaNuevaDto.GarantiaUserCrea ?? request.PrestamoUserCrea ?? "system",
+                        GarantiaFechaCreacion = DateTime.UtcNow
+                    };
+
+                    _context.Garantias.Add(nuevaGarantia);
+                    await _context.SaveChangesAsync(); // Guardar para obtener el GarantiaId
+
+                    _logger.LogInformation("Nueva garantía creada con ID: {GarantiaId}", nuevaGarantia.GarantiaId);
+
+                    // Crear la relación préstamo-garantía
+                    var prestamoGarantia = new PrestamoGarantia
+                    {
+                        PrestamoId = prestamo.PrestamoId,
+                        GarantiaId = nuevaGarantia.GarantiaId,
+                        PrestamoGarantiaMontoComprometido = garantiaNuevaDto.MontoComprometido,
+                        PrestamoGarantiaFechaAsignacion = DateTime.UtcNow,
+                        PrestamoGarantiaEstaActiva = true
+                    };
+
+                    _context.PrestamosGarantias.Add(prestamoGarantia);
+                    _logger.LogInformation("Relación PrestamoGarantia agregada. PrestamoId: {PrestamoId}, GarantiaId: {GarantiaId}, Monto: {Monto}",
+                        prestamo.PrestamoId, nuevaGarantia.GarantiaId, garantiaNuevaDto.MontoComprometido);
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Garantías nuevas guardadas exitosamente");
+            }
+            else
+            {
+                _logger.LogInformation("No se proporcionaron garantías nuevas para este préstamo");
+            }
+
+            // Procesar garantías existentes si se proporcionaron
+            _logger.LogInformation("Procesando garantías existentes. Request.Garantias: {Garantias}", request.Garantias);
             if (request.Garantias != null && request.Garantias.Any())
             {
                 _logger.LogInformation("Se encontraron {Count} garantías para procesar", request.Garantias.Count);

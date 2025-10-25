@@ -58,7 +58,12 @@ public class PrestamoCreateRequest
     public string? PrestamoUserCrea { get; set; }
 
     /// <summary>
-    /// Lista opcional de garantías a asociar con el préstamo
+    /// Lista opcional de garantías existentes a asociar con el préstamo
     /// </summary>
     public List<PrestamoGarantiaDto>? Garantias { get; set; }
+
+    /// <summary>
+    /// Lista opcional de nuevas garantías a crear y asociar con el préstamo
+    /// </summary>
+    public List<GarantiaNuevaDto>? GarantiasNuevas { get; set; }
 }
