@@ -47,9 +47,15 @@ public class Garantia
     [Column("garantiafechamodifica")]
     public DateTime? GarantiaFechaModifica { get; set; }
 
+    [Column("personafiadorid")]
+    public long? PersonaFiadorId { get; set; }
+
     // Navigation properties
     [ForeignKey("PersonaId")]
     public virtual Persona Persona { get; set; } = null!;
+
+    [ForeignKey("PersonaFiadorId")]
+    public virtual Persona? PersonaFiador { get; set; }
 
     [ForeignKey("TipoGarantiaId")]
     public virtual TipoGarantia TipoGarantia { get; set; } = null!;

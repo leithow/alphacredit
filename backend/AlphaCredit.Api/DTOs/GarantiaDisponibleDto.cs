@@ -8,6 +8,8 @@ public class GarantiaDisponibleDto
     public long GarantiaId { get; set; }
     public long PersonaId { get; set; }
     public string PersonaNombreCompleto { get; set; } = string.Empty;
+    public long? PersonaFiadorId { get; set; }
+    public string? PersonaFiadorNombreCompleto { get; set; }
     public long TipoGarantiaId { get; set; }
     public string TipoGarantiaNombre { get; set; } = string.Empty;
     public string GarantiaDescripcion { get; set; } = string.Empty;

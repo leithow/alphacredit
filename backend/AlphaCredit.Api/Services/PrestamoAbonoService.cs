@@ -773,19 +773,97 @@ public class PrestamoAbonoService
         var prestamo = await _context.Prestamos
             .Include(p => p.PrestamoComponentes)
             .ThenInclude(pc => pc.ComponentePrestamo)
+            .Include(p => p.PrestamoComponentes)
+            .ThenInclude(pc => pc.EstadoComponente)
             .FirstOrDefaultAsync(p => p.PrestamoId == prestamoId);
 
         if (prestamo == null) return;
 
+        // Calcular saldos basados en componentes cuyo estado NO sea PAGADO
         prestamo.PrestamoSaldoCapital = prestamo.PrestamoComponentes
-            .Where(pc => pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_CAPITAL)
+            .Where(pc => pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_CAPITAL &&
+                        pc.EstadoComponente.EstadoComponenteNombre.ToUpper() != ESTADO_PAGADO)
             .Sum(pc => pc.PrestamoComponenteSaldo);
 
         prestamo.PrestamoSaldoInteres = prestamo.PrestamoComponentes
-            .Where(pc => pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_INTERES)
+            .Where(pc => pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_INTERES &&
+                        pc.EstadoComponente.EstadoComponenteNombre.ToUpper() != ESTADO_PAGADO)
             .Sum(pc => pc.PrestamoComponenteSaldo);
 
         prestamo.PrestamoFechaModifica = DateTime.UtcNow;
+
+        // Actualizar estado del préstamo basado en componentes
+        await ActualizarEstadoPrestamoAsync(prestamo);
+    }
+
+    /// <summary>
+    /// Actualiza el estado del préstamo basado en el estado de sus componentes
+    /// </summary>
+    private async Task ActualizarEstadoPrestamoAsync(Prestamo prestamo)
+    {
+        var fechaActual = await _fechaSistemaService.ObtenerFechaActualAsync();
+
+        // PRIORIDAD 1: Si el préstamo está totalmente pagado (saldo capital = 0)
+        if (prestamo.PrestamoSaldoCapital == 0)
+        {
+            var estadoCancelado = await _context.EstadosPrestamo
+                .FirstOrDefaultAsync(e => e.EstadoPrestamoNombre.ToUpper().Contains("CANCELADO") ||
+                                         e.EstadoPrestamoNombre.ToUpper().Contains("PAGADO"));
+
+            if (estadoCancelado != null)
+            {
+                prestamo.EstadoPrestamoId = estadoCancelado.EstadoPrestamoId;
+                return;
+            }
+        }
+
+        // PRIORIDAD 2: Si tiene componentes vencidos (fecha de vencimiento pasada y saldo > 0)
+        var tieneComponentesVencidos = prestamo.PrestamoComponentes.Any(pc =>
+            pc.PrestamoComponenteFechaVencimiento.HasValue &&
+            pc.PrestamoComponenteFechaVencimiento.Value < fechaActual &&
+            pc.PrestamoComponenteSaldo > 0 &&
+            pc.ComponentePrestamo.ComponentePrestamoTipo != COMPONENTE_MORA);
+
+        if (tieneComponentesVencidos)
+        {
+            var estadoVencido = await _context.EstadosPrestamo
+                .FirstOrDefaultAsync(e => e.EstadoPrestamoNombre.ToUpper().Contains("VENCIDO"));
+
+            if (estadoVencido != null)
+            {
+                prestamo.EstadoPrestamoId = estadoVencido.EstadoPrestamoId;
+                return;
+            }
+        }
+
+        // PRIORIDAD 3: Si tiene componentes de mora con saldo > 0
+        var tieneComponentesMorosos = prestamo.PrestamoComponentes.Any(pc =>
+            pc.ComponentePrestamo.ComponentePrestamoTipo == COMPONENTE_MORA &&
+            pc.PrestamoComponenteSaldo > 0);
+
+        if (tieneComponentesMorosos)
+        {
+            var estadoMoroso = await _context.EstadosPrestamo
+                .FirstOrDefaultAsync(e => e.EstadoPrestamoNombre.ToUpper().Contains("MOROSO") ||
+                                         e.EstadoPrestamoNombre.ToUpper().Contains("MORA"));
+
+            if (estadoMoroso != null)
+            {
+                prestamo.EstadoPrestamoId = estadoMoroso.EstadoPrestamoId;
+                return;
+            }
+        }
+
+        // PRIORIDAD 4: Si no hay ninguna condición anterior, el préstamo está ACTIVO/VIGENTE
+        var estadoActivo = await _context.EstadosPrestamo
+            .FirstOrDefaultAsync(e => (e.EstadoPrestamoNombre.ToUpper().Contains("ACTIVO") ||
+                                       e.EstadoPrestamoNombre.ToUpper().Contains("VIGENTE")) &&
+                                      e.EstadoPrestamoEstaActivo);
+
+        if (estadoActivo != null)
+        {
+            prestamo.EstadoPrestamoId = estadoActivo.EstadoPrestamoId;
+        }
     }
 
     private async Task<long> ObtenerEstadoComponenteIdAsync(string nombreEstado)

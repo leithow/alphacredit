@@ -32,6 +32,7 @@ public class GarantiasController : ControllerBase
         {
             var query = _context.Garantias
                 .Include(g => g.Persona)
+                .Include(g => g.PersonaFiador)
                 .Include(g => g.TipoGarantia)
                 .Include(g => g.EstadoGarantia)
                 .AsQueryable();
@@ -81,6 +82,7 @@ public class GarantiasController : ControllerBase
         {
             var garantia = await _context.Garantias
                 .Include(g => g.Persona)
+                .Include(g => g.PersonaFiador)
                 .Include(g => g.TipoGarantia)
                 .Include(g => g.EstadoGarantia)
                 .Include(g => g.PrestamoGarantias)
@@ -103,32 +105,78 @@ public class GarantiasController : ControllerBase
 
     // POST: api/garantias
     [HttpPost]
-    public async Task<ActionResult<Garantia>> CreateGarantia(Garantia garantia)
+    public async Task<ActionResult<Garantia>> CreateGarantia(CreateGarantiaDto dto)
     {
         try
         {
+            _logger.LogInformation("=== CREAR GARANTÍA ===");
+            _logger.LogInformation($"PersonaId: {dto.PersonaId}");
+            _logger.LogInformation($"TipoGarantiaId: {dto.TipoGarantiaId}");
+            _logger.LogInformation($"EstadoGarantiaId: {dto.EstadoGarantiaId}");
+            _logger.LogInformation($"PersonaFiadorId: {dto.PersonaFiadorId}");
+            _logger.LogInformation($"Descripción: {dto.GarantiaDescripcion}");
+            _logger.LogInformation($"ValorComercial: {dto.GarantiaValorComercial}");
+            _logger.LogInformation($"ValorRealizable: {dto.GarantiaValorRealizable}");
+
             // Validar que la persona existe
-            var persona = await _context.Personas.FindAsync(garantia.PersonaId);
+            var persona = await _context.Personas.FindAsync(dto.PersonaId);
             if (persona == null)
             {
+                _logger.LogError($"Persona con ID {dto.PersonaId} no existe");
                 return BadRequest(new { message = "La persona especificada no existe" });
             }
 
             // Validar que el tipo de garantía existe
-            var tipoGarantia = await _context.TiposGarantia.FindAsync(garantia.TipoGarantiaId);
+            var tipoGarantia = await _context.TiposGarantia.FindAsync(dto.TipoGarantiaId);
             if (tipoGarantia == null)
             {
                 return BadRequest(new { message = "El tipo de garantía especificado no existe" });
             }
 
             // Validar que el estado de garantía existe
-            var estadoGarantia = await _context.EstadosGarantia.FindAsync(garantia.EstadoGarantiaId);
+            var estadoGarantia = await _context.EstadosGarantia.FindAsync(dto.EstadoGarantiaId);
             if (estadoGarantia == null)
             {
                 return BadRequest(new { message = "El estado de garantía especificado no existe" });
             }
 
-            garantia.GarantiaFechaCreacion = DateTime.UtcNow;
+            // Si es garantía fiduciaria, validar PersonaFiadorId
+            if (tipoGarantia.TipoGarantiaNombre.ToUpper().Contains("FIDUCIARIA"))
+            {
+                if (!dto.PersonaFiadorId.HasValue)
+                {
+                    return BadRequest(new { message = "Para garantías fiduciarias debe especificar una persona fiadora" });
+                }
+
+                // Validar que la persona fiadora existe
+                var personaFiador = await _context.Personas.FindAsync(dto.PersonaFiadorId.Value);
+                if (personaFiador == null)
+                {
+                    return BadRequest(new { message = "La persona fiadora especificada no existe" });
+                }
+
+                // Esta validación se hará cuando se asigne la garantía a un préstamo
+                // por ahora solo validamos que el fiador no sea la misma persona que el propietario
+                if (dto.PersonaFiadorId == dto.PersonaId)
+                {
+                    return BadRequest(new { message = "El fiador no puede ser la misma persona que el propietario de la garantía" });
+                }
+            }
+
+            // Crear la entidad Garantia desde el DTO
+            var garantia = new Garantia
+            {
+                PersonaId = dto.PersonaId,
+                TipoGarantiaId = dto.TipoGarantiaId,
+                EstadoGarantiaId = dto.EstadoGarantiaId,
+                PersonaFiadorId = dto.PersonaFiadorId,
+                GarantiaDescripcion = dto.GarantiaDescripcion,
+                GarantiaValorComercial = dto.GarantiaValorComercial,
+                GarantiaValorRealizable = dto.GarantiaValorRealizable,
+                GarantiaObservaciones = dto.GarantiaObservaciones,
+                GarantiaUserCrea = dto.GarantiaUserCrea,
+                GarantiaFechaCreacion = DateTime.UtcNow
+            };
 
             _context.Garantias.Add(garantia);
             await _context.SaveChangesAsync();
@@ -159,9 +207,39 @@ public class GarantiasController : ControllerBase
                 return NotFound(new { message = $"Garantía con ID {id} no encontrada" });
             }
 
+            // Validar tipo de garantía si está cambiando
+            var tipoGarantia = await _context.TiposGarantia.FindAsync(garantia.TipoGarantiaId);
+            if (tipoGarantia == null)
+            {
+                return BadRequest(new { message = "El tipo de garantía especificado no existe" });
+            }
+
+            // Si es garantía fiduciaria, validar PersonaFiadorId
+            if (tipoGarantia.TipoGarantiaNombre.ToUpper().Contains("FIDUCIARIA"))
+            {
+                if (!garantia.PersonaFiadorId.HasValue)
+                {
+                    return BadRequest(new { message = "Para garantías fiduciarias debe especificar una persona fiadora" });
+                }
+
+                // Validar que la persona fiadora existe
+                var personaFiador = await _context.Personas.FindAsync(garantia.PersonaFiadorId.Value);
+                if (personaFiador == null)
+                {
+                    return BadRequest(new { message = "La persona fiadora especificada no existe" });
+                }
+
+                // Validar que el fiador no sea la misma persona que el propietario
+                if (garantia.PersonaFiadorId == existingGarantia.PersonaId)
+                {
+                    return BadRequest(new { message = "El fiador no puede ser la misma persona que el propietario de la garantía" });
+                }
+            }
+
             // Actualizar campos
             existingGarantia.TipoGarantiaId = garantia.TipoGarantiaId;
             existingGarantia.EstadoGarantiaId = garantia.EstadoGarantiaId;
+            existingGarantia.PersonaFiadorId = garantia.PersonaFiadorId;
             existingGarantia.GarantiaDescripcion = garantia.GarantiaDescripcion;
             existingGarantia.GarantiaValorComercial = garantia.GarantiaValorComercial;
             existingGarantia.GarantiaValorRealizable = garantia.GarantiaValorRealizable;
@@ -236,6 +314,8 @@ public class GarantiasController : ControllerBase
                     .ThenInclude(g => g.TipoGarantia)
                 .Include(pg => pg.Garantia)
                     .ThenInclude(g => g.EstadoGarantia)
+                .Include(pg => pg.Garantia)
+                    .ThenInclude(g => g.PersonaFiador)
                 .Select(pg => pg.Garantia);
 
             var totalRecords = await query.CountAsync();
@@ -278,6 +358,7 @@ public class GarantiasController : ControllerBase
         {
             var query = _context.Garantias
                 .Where(g => g.PersonaId == personaId)
+                .Include(g => g.PersonaFiador)
                 .Include(g => g.TipoGarantia)
                 .Include(g => g.EstadoGarantia)
                 .AsQueryable();
@@ -314,6 +395,7 @@ public class GarantiasController : ControllerBase
         {
             var query = _context.Garantias
                 .Include(g => g.Persona)
+                .Include(g => g.PersonaFiador)
                 .Include(g => g.TipoGarantia)
                 .Include(g => g.PrestamoGarantias)
                 .AsQueryable();
@@ -341,6 +423,8 @@ public class GarantiasController : ControllerBase
                     GarantiaId = g.GarantiaId,
                     PersonaId = g.PersonaId,
                     PersonaNombreCompleto = g.Persona?.PersonaNombreCompleto ?? "",
+                    PersonaFiadorId = g.PersonaFiadorId,
+                    PersonaFiadorNombreCompleto = g.PersonaFiador?.PersonaNombreCompleto,
                     TipoGarantiaId = g.TipoGarantiaId,
                     TipoGarantiaNombre = g.TipoGarantia?.TipoGarantiaNombre ?? "",
                     GarantiaDescripcion = g.GarantiaDescripcion,

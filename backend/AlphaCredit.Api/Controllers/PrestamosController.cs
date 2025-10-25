@@ -328,10 +328,14 @@ public class PrestamosController : ControllerBase
             fondo.FondoUserModifica = request.PrestamoUserCrea ?? "system";
 
             // Procesar garantías si se proporcionaron
+            _logger.LogInformation("Procesando garantías. Request.Garantias: {Garantias}", request.Garantias);
             if (request.Garantias != null && request.Garantias.Any())
             {
+                _logger.LogInformation("Se encontraron {Count} garantías para procesar", request.Garantias.Count);
                 foreach (var garantiaDto in request.Garantias)
                 {
+                    _logger.LogInformation("Procesando garantía ID: {GarantiaId}, Monto: {Monto}", garantiaDto.GarantiaId, garantiaDto.MontoComprometido);
+
                     // Validar que la garantía existe
                     var garantia = await _context.Garantias
                         .Include(g => g.TipoGarantia)
@@ -340,6 +344,7 @@ public class PrestamosController : ControllerBase
 
                     if (garantia == null)
                     {
+                        _logger.LogWarning("Garantía con ID {GarantiaId} no encontrada", garantiaDto.GarantiaId);
                         return BadRequest(new { message = $"La garantía con ID {garantiaDto.GarantiaId} no existe" });
                     }
 
@@ -366,6 +371,19 @@ public class PrestamosController : ControllerBase
                             });
                         }
                     }
+                    else
+                    {
+                        // Si es garantía fiduciaria, validar que el fiador no sea el mismo que el propietario del préstamo
+                        if (!garantia.PersonaFiadorId.HasValue)
+                        {
+                            return BadRequest(new { message = $"La garantía fiduciaria '{garantia.GarantiaDescripcion}' debe tener un fiador asignado" });
+                        }
+
+                        if (garantia.PersonaFiadorId == prestamo.PersonaId)
+                        {
+                            return BadRequest(new { message = $"El fiador de la garantía '{garantia.GarantiaDescripcion}' no puede ser la misma persona que el propietario del préstamo" });
+                        }
+                    }
 
                     // Crear la relación préstamo-garantía
                     var prestamoGarantia = new PrestamoGarantia
@@ -378,10 +396,18 @@ public class PrestamosController : ControllerBase
                     };
 
                     _context.PrestamosGarantias.Add(prestamoGarantia);
+                    _logger.LogInformation("PrestamoGarantia agregada al contexto. PrestamoId: {PrestamoId}, GarantiaId: {GarantiaId}, Monto: {Monto}",
+                        prestamo.PrestamoId, garantiaDto.GarantiaId, garantiaDto.MontoComprometido);
                 }
             }
+            else
+            {
+                _logger.LogInformation("No se proporcionaron garantías para este préstamo");
+            }
 
+            _logger.LogInformation("Guardando cambios en la base de datos (incluyendo garantías)...");
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Cambios guardados exitosamente");
 
             // Generar automáticamente contrato y pagaré
             try
